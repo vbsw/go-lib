@@ -32,7 +32,7 @@ type Delimiter struct {
 }
 
 // New returns a new instance of CommandLine.
-func New(args []string) *CommandLine {
+func New(args []string, delimiter *Delimiter) *CommandLine {
 	cmdLine := new(CommandLine)
 	length := len(args)
 	if length > 0 {
@@ -42,6 +42,7 @@ func New(args []string) *CommandLine {
 	// last value means all arguments are matched
 	cmdLine.Matched = make([]bool, length+1)
 	cmdLine.Matched[length] = bool(length == 0)
+	cmdLine.Delimiter = delimiter
 	return cmdLine
 }
 
