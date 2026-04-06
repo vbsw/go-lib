@@ -25,7 +25,7 @@ cl is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 	)
 
 	func main() {
-		osCmdLine := cl.New(os.Args[1:])
+		osCmdLine := cl.New(os.Args[1:], nil)
 
 		if osCmdLine.Search("--help", "-h").Available() {
 			fmt.Println("USAGE")
@@ -60,8 +60,7 @@ cl is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 	func main() {
 		start := "0"
 		end := "0"
-		osCmdLine := cl.New(os.Args[1:])
-		osCmdLine.Delimiter = cl.NewDelimiter("=")
+		osCmdLine := cl.New(os.Args[1:], cl.NewDelimiter("="))
 
 		startArg := osCmdLine.SearchByDelimiter("start")
 		endArg := osCmdLine.SearchByDelimiter("end")
