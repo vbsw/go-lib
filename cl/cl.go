@@ -21,7 +21,7 @@ type CommandLine struct {
 type Arguments struct {
 	Keys    []string
 	Values  []string
-	Origins []int
+	Indices []int
 }
 
 // Delimiter represents separators between key and value.
@@ -83,7 +83,7 @@ func (cmdLine *CommandLine) Search(searchedKeys ...string) *Arguments {
 								args = new(Arguments)
 							}
 							args.Keys = append(args.Keys, searchedKey)
-							args.Origins = append(args.Origins, i)
+							args.Indices = append(args.Indices, i)
 							cmdLine.Matched[i] = true
 							break
 						}
@@ -120,8 +120,8 @@ func (cmdLine *CommandLine) SearchByDelimiter(searchedKeys ...string) *Arguments
 func (cmdLine *CommandLine) RevertMatched(argsList ...*Arguments) {
 	for _, args := range argsList {
 		if args != nil {
-			for _, origin := range args.Origins {
-				cmdLine.Matched[origin] = false
+			for _, index := range args.Indices {
+				cmdLine.Matched[index] = false
 				cmdLine.Matched[len(cmdLine.Arguments)] = false
 			}
 		}
@@ -165,11 +165,11 @@ func (args *Arguments) HasValue(value string) bool {
 	return false
 }
 
-// HasValue returns true if origin is in Origins.
-func (args *Arguments) HasOrigin(origin int) bool {
+// HasIndex returns true if index is in Indices.
+func (args *Arguments) HasIndex(index int) bool {
 	if args != nil {
-		for _, o := range args.Origins {
-			if o == origin {
+		for _, i := range args.Indices {
+			if i == index {
 				return true
 			}
 		}
@@ -187,7 +187,7 @@ func (cmdLine *CommandLine) Unmatched() *Arguments {
 			for i, arg := range cmdLine.Arguments {
 				if !cmdLine.Matched[i] {
 					args.Keys = append(args.Keys, arg)
-					args.Origins = append(args.Origins, i)
+					args.Indices = append(args.Indices, i)
 				}
 			}
 		}
@@ -210,7 +210,7 @@ func (cmdLine *CommandLine) searchPairsWithSpace(searchedKeys []string) *Argumen
 						}
 						args.Keys = append(args.Keys, searchedKey)
 						args.Values = append(args.Values, value)
-						args.Origins = append(args.Origins, i)
+						args.Indices = append(args.Indices, i)
 						cmdLine.Matched[i] = true
 						break
 					}
@@ -219,7 +219,7 @@ func (cmdLine *CommandLine) searchPairsWithSpace(searchedKeys []string) *Argumen
 					if args == nil {
 						args = new(Arguments)
 					}
-					args.Origins = append(args.Origins, i)
+					args.Indices = append(args.Indices, i)
 					cmdLine.Matched[i] = true
 					if iNxt < length && !cmdLine.Matched[iNxt] {
 						value = cmdLine.Arguments[iNxt]
@@ -252,7 +252,7 @@ func (cmdLine *CommandLine) searchPairsWithoutSpace(searchedKeys []string) *Argu
 						}
 						args.Keys = append(args.Keys, searchedKey)
 						args.Values = append(args.Values, value)
-						args.Origins = append(args.Origins, i)
+						args.Indices = append(args.Indices, i)
 						cmdLine.Matched[i] = true
 						break
 					}
@@ -262,7 +262,7 @@ func (cmdLine *CommandLine) searchPairsWithoutSpace(searchedKeys []string) *Argu
 					}
 					args.Keys = append(args.Keys, searchedKey)
 					args.Values = append(args.Values, "")
-					args.Origins = append(args.Origins, i)
+					args.Indices = append(args.Indices, i)
 					cmdLine.Matched[i] = true
 					break
 				}
