@@ -116,6 +116,18 @@ func (cmdLine *CommandLine) SearchByDelimiter(searchedKeys ...string) *Arguments
 	return args
 }
 
+// RevertMatched sets arguments in CommandLine to unmatched.
+func (cmdLine *CommandLine) RevertMatched(argsList ...*Arguments) {
+	for _, args := range argsList {
+		if args != nil {
+			for _, origin := range args.Origins {
+				cmdLine.Matched[origin] = false
+				cmdLine.Matched[len(cmdLine.Arguments)] = false
+			}
+		}
+	}
+}
+
 // Available returns true if at least one argument is available.
 func (args *Arguments) Available() bool {
 	return args != nil && len(args.Keys) > 0
