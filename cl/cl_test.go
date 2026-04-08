@@ -10,7 +10,7 @@ package cl
 import "testing"
 
 func TestSingleArgA(t *testing.T) {
-	cmdLine := New([]string{"asdf", "--version"})
+	cmdLine := New([]string{"asdf", "--version"}, nil)
 	versionArg := cmdLine.Search("-v", "--version")
 	if !versionArg.Available() {
 		t.Error()
@@ -28,7 +28,7 @@ func TestSingleArgA(t *testing.T) {
 }
 
 func TestSingleArgB(t *testing.T) {
-	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"})
+	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"}, nil)
 	startArg := cmdLine.Search("-s", "--start")
 
 	if !startArg.Available() {
@@ -48,8 +48,7 @@ func TestSingleArgB(t *testing.T) {
 }
 
 func TestArgByDelimiterA(t *testing.T) {
-	cmdLine := New([]string{"asdf", "--start=123"})
-	cmdLine.Delimiter = NewDelimiter("=", "")
+	cmdLine := New([]string{"asdf", "--start=123"}, NewDelimiter("=", ""))
 	startArg := cmdLine.SearchByDelimiter("-s", "--start")
 
 	if !startArg.Available() {
@@ -72,8 +71,7 @@ func TestArgByDelimiterA(t *testing.T) {
 }
 
 func TestArgByDelimiterB(t *testing.T) {
-	cmdLine := New([]string{"asdf", "--start", "123"})
-	cmdLine.Delimiter = NewDelimiter("=", " ")
+	cmdLine := New([]string{"asdf", "--start", "123"}, NewDelimiter("=", " "))
 	startArg := cmdLine.SearchByDelimiter("-s", "--start")
 
 	if !startArg.Available() {
@@ -96,8 +94,7 @@ func TestArgByDelimiterB(t *testing.T) {
 }
 
 func TestArgByDelimiterC(t *testing.T) {
-	cmdLine := New([]string{"asdf", "--start123"})
-	cmdLine.Delimiter = NewDelimiter("=", "")
+	cmdLine := New([]string{"asdf", "--start123"}, NewDelimiter("=", ""))
 	startArg := cmdLine.SearchByDelimiter("-s", "--start")
 
 	if !startArg.Available() {
@@ -120,7 +117,7 @@ func TestArgByDelimiterC(t *testing.T) {
 }
 
 func TestRest(t *testing.T) {
-	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"})
+	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"}, nil)
 	cmdLine.Search("--start", "-s")
 	unmatched := cmdLine.Unmatched()
 
