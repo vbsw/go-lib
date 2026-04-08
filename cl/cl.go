@@ -217,19 +217,20 @@ func (cmdLine *CommandLine) searchPairsWithSpace(searchedKeys []string) *Argumen
 						break
 					}
 				} else if argument == searchedKey {
-					value, iNxt := "", i+1
+					iNxt := i + 1
 					if args == nil {
 						args = new(Arguments)
 					}
+					args.Keys = append(args.Keys, searchedKey)
 					args.Indices = append(args.Indices, i)
 					cmdLine.Matched[i] = true
 					if iNxt < length && !cmdLine.Matched[iNxt] {
-						value = cmdLine.Arguments[iNxt]
+						args.Values = append(args.Values, cmdLine.Arguments[iNxt])
 						cmdLine.Matched[iNxt] = true
 						i = iNxt
+					} else {
+						args.Values = append(args.Values, "")
 					}
-					args.Keys = append(args.Keys, searchedKey)
-					args.Values = append(args.Values, value)
 					break
 				}
 			}
