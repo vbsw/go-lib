@@ -179,6 +179,36 @@ func (args *Arguments) HasIndex(index int) bool {
 	return false
 }
 
+// KeyAt returns key at index, otherwise returns default.
+func (args *Arguments) KeyAt(index int, defaultRet string) string {
+	if args != nil {
+		if index >= 0 && index < len(args.Keys) {
+			return args.Keys[index]
+		}
+	}
+	return defaultRet
+}
+
+// ValueAt returns value at index, otherwise returns default.
+func (args *Arguments) ValueAt(index int, defaultRet string) string {
+	if args != nil {
+		if index >= 0 && index < len(args.Values) {
+			return args.Values[index]
+		}
+	}
+	return defaultRet
+}
+
+// IndexAt returns index at index, otherwise returns default.
+func (args *Arguments) IndexAt(index int, defaultRet int) int {
+	if args != nil {
+		if index >= 0 && index < len(args.Indices) {
+			return args.Indices[index]
+		}
+	}
+	return defaultRet
+}
+
 // Unmatched returns command line arguments that haven't been matched by the search.
 func (cmdLine *CommandLine) Unmatched() *Arguments {
 	var args *Arguments
