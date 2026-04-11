@@ -27,12 +27,12 @@ cl is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 	func main() {
 		osCmdLine := cl.New(os.Args[1:], nil)
 
-		if osCmdLine.Search("--help", "-h").Available() {
+		if osCmdLine.Match("--help", "-h").Available() {
 			fmt.Println("USAGE")
 			fmt.Println("    --help         prints help")
 			fmt.Println("    --version      prints version")
 
-		} else if osCmdLine.Search("--version", "-v").Available() {
+		} else if osCmdLine.Match("--version", "-v").Available() {
 			fmt.Println("version 1.0.0")
 
 		} else {
@@ -57,13 +57,13 @@ cl is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 		"os"
 	)
 
+	const defaultStart = "0"
+
 	func main() {
 		osCmdLine := cl.New(os.Args[1:], cl.NewDelimiter("="))
 
-		startArg := osCmdLine.SearchByDelimiter("start")
-		endArg := osCmdLine.SearchByDelimiter("end")
-		start := startArg.ValueAt(0, "0")
-		end := startArg.ValueAt(0, start)
+		start := osCmdLine.MatchDelimited("start").ValueAt(0, defaultStart)
+		end := osCmdLine.MatchDelimited("end").ValueAt(0, start)
 
 		fmt.Println("processing from", start, "to", end)
 	}
