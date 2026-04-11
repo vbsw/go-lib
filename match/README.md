@@ -1,9 +1,9 @@
 # match
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-experimental/match.svg)](https://pkg.go.dev/github.com/vbsw/go-experimental/match) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-experimental/match)](https://goreportcard.com/report/github.com/vbsw/go-experimental/match)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/match.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/match) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/match)](https://goreportcard.com/report/github.com/vbsw/go-lib/match)
 
 ## About
-Package match provides simple wildcard string matching. Package match is published on <https://github.com/vbsw/go-experimental/match>.
+Package match provides simple wildcard string matching. Package match is published on <https://github.com/vbsw/go-lib/match>.
 
 ## Copyright
 Copyright 2026, Vitali Baumtrok (vbsw@mailbox.org).
