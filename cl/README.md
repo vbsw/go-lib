@@ -1,6 +1,6 @@
 # cl
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cl.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cl) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/cl)](https://goreportcard.com/report/github.com/vbsw/go-lib/cl) [![Stability: Experimental](https://masterminds.github.io/stability/experimental.svg)](https://masterminds.github.io/stability/experimental.html)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cl.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cl) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/cl)](https://goreportcard.com/report/github.com/vbsw/go-lib/cl)
 
 ## About
 cl is a package for Go to parse command line arguments. It is published on <https://github.com/vbsw/go-lib/cl>.
