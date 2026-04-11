@@ -11,7 +11,7 @@ import "testing"
 
 func TestSingleArgA(t *testing.T) {
 	cmdLine := New([]string{"asdf", "--version"}, nil)
-	versionArg := cmdLine.Search("-v", "--version")
+	versionArg := cmdLine.Match("-v", "--version")
 	if !versionArg.Available() {
 		t.Error()
 	} else {
@@ -29,7 +29,7 @@ func TestSingleArgA(t *testing.T) {
 
 func TestSingleArgB(t *testing.T) {
 	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"}, nil)
-	startArg := cmdLine.Search("-s", "--start")
+	startArg := cmdLine.Match("-s", "--start")
 
 	if !startArg.Available() {
 		t.Error()
@@ -49,7 +49,7 @@ func TestSingleArgB(t *testing.T) {
 
 func TestArgByDelimiterA(t *testing.T) {
 	cmdLine := New([]string{"asdf", "--start=123"}, NewDelimiter("=", ""))
-	startArg := cmdLine.SearchByDelimiter("-s", "--start")
+	startArg := cmdLine.MatchDelimited("-s", "--start")
 
 	if !startArg.Available() {
 		t.Error()
@@ -72,7 +72,7 @@ func TestArgByDelimiterA(t *testing.T) {
 
 func TestArgByDelimiterB(t *testing.T) {
 	cmdLine := New([]string{"asdf", "--start", "123"}, NewDelimiter("=", " "))
-	startArg := cmdLine.SearchByDelimiter("-s", "--start")
+	startArg := cmdLine.MatchDelimited("-s", "--start")
 
 	if !startArg.Available() {
 		t.Error()
@@ -95,7 +95,7 @@ func TestArgByDelimiterB(t *testing.T) {
 
 func TestArgByDelimiterC(t *testing.T) {
 	cmdLine := New([]string{"asdf", "--start123"}, NewDelimiter("=", ""))
-	startArg := cmdLine.SearchByDelimiter("-s", "--start")
+	startArg := cmdLine.MatchDelimited("-s", "--start")
 
 	if !startArg.Available() {
 		t.Error()
@@ -118,7 +118,7 @@ func TestArgByDelimiterC(t *testing.T) {
 
 func TestRest(t *testing.T) {
 	cmdLine := New([]string{"--start", "asdf", "-s", "qwer"}, nil)
-	cmdLine.Search("--start", "-s")
+	cmdLine.Match("--start", "-s")
 	unmatched := cmdLine.Unmatched()
 
 	if !cmdLine.Matched[0] {
@@ -139,7 +139,7 @@ func TestRest(t *testing.T) {
 	} else if unmatched.Keys[1] != cmdLine.Arguments[3] {
 		t.Error(unmatched.Keys[1])
 	}
-	cmdLine.Search("asdf", "qwer")
+	cmdLine.Match("asdf", "qwer")
 	if !cmdLine.Matched[4] || cmdLine.Unmatched() != nil {
 		t.Error("wrongly not matched")
 	}
