@@ -179,34 +179,34 @@ func (args *Arguments) HasIndex(index int) bool {
 	return false
 }
 
-// KeyAt returns key at index, otherwise returns default.
-func (args *Arguments) KeyAt(index int, defaultRet string) string {
+// KeyAt returns key at index if available otherwise returns fallback.
+func (args *Arguments) KeyAt(index int, fallback string) string {
 	if args != nil {
 		if index >= 0 && index < len(args.Keys) {
 			return args.Keys[index]
 		}
 	}
-	return defaultRet
+	return fallback
 }
 
-// ValueAt returns value at index, otherwise returns default.
-func (args *Arguments) ValueAt(index int, defaultRet string) string {
+// ValueAt returns value at index if available otherwise returns fallback.
+func (args *Arguments) ValueAt(index int, fallback string) string {
 	if args != nil {
 		if index >= 0 && index < len(args.Values) {
 			return args.Values[index]
 		}
 	}
-	return defaultRet
+	return fallback
 }
 
-// IndexAt returns index at index, otherwise returns default.
-func (args *Arguments) IndexAt(index int, defaultRet int) int {
+// IndexAt returns index at index if available otherwise returns fallback.
+func (args *Arguments) IndexAt(index int, fallback int) int {
 	if args != nil {
 		if index >= 0 && index < len(args.Indices) {
 			return args.Indices[index]
 		}
 	}
-	return defaultRet
+	return fallback
 }
 
 // Unmatched returns command line arguments that haven't been matched by the search.

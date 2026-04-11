@@ -58,20 +58,13 @@ cl is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 	)
 
 	func main() {
-		start := "0"
-		end := "0"
 		osCmdLine := cl.New(os.Args[1:], cl.NewDelimiter("="))
 
 		startArg := osCmdLine.SearchByDelimiter("start")
 		endArg := osCmdLine.SearchByDelimiter("end")
+		start := startArg.ValueAt(0, "0")
+		end := startArg.ValueAt(0, start)
 
-		if startArg.Available() {
-			start = startArg.Values[0]
-			end = start
-		}
-		if endArg.Available() {
-			end = endArg.Values[0]
-		}
 		fmt.Println("processing from", start, "to", end)
 	}
 
