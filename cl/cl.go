@@ -17,7 +17,7 @@ type CommandLine struct {
 	Delimiter *Delimiter
 }
 
-// Arguments represents arguments returned by command line search.
+// Arguments represents arguments in command line.
 type Arguments struct {
 	Keys    []string
 	Values  []string
@@ -69,20 +69,20 @@ func NewDelimiter(separators ...string) *Delimiter {
 	return delimiter
 }
 
-// Match searches flags in CommandLine.Arguments and returns them.
-func (cmdLine *CommandLine) Match(flags ...string) *Arguments {
+// Match searches arguments in command line and returns them.
+func (cmdLine *CommandLine) Match(arguments ...string) *Arguments {
 	var args *Arguments
 	if cmdLine != nil {
-		if !cmdLine.Matched[len(cmdLine.Arguments)] && len(flags) > 0 {
+		if !cmdLine.Matched[len(cmdLine.Arguments)] && len(arguments) > 0 {
 			allMatched := true
 			for i, argument := range cmdLine.Arguments {
 				if !cmdLine.Matched[i] {
-					for _, searchedFlag := range flags {
-						if argument == searchedFlag {
+					for _, searchedArg := range arguments {
+						if argument == searchedArg {
 							if args == nil {
 								args = new(Arguments)
 							}
-							args.Keys = append(args.Keys, searchedFlag)
+							args.Keys = append(args.Keys, searchedArg)
 							args.Indices = append(args.Indices, i)
 							cmdLine.Matched[i] = true
 							break
@@ -97,18 +97,18 @@ func (cmdLine *CommandLine) Match(flags ...string) *Arguments {
 	return args
 }
 
-// MatchDelimited searches flags in CommandLine.Arguments and returns them.
+// MatchDelimited searches arguments in command line and returns them.
 // The search considers a delimiter, that separates key and value within argument.
 // Is Delimiter.HasSpaceSeparator set, then two arguments are treated as one argument
 // with key and value separated by space.
-func (cmdLine *CommandLine) MatchDelimited(flags ...string) *Arguments {
+func (cmdLine *CommandLine) MatchDelimited(arguments ...string) *Arguments {
 	var args *Arguments
 	if cmdLine != nil {
-		if !cmdLine.Matched[len(cmdLine.Arguments)] && len(flags) > 0 {
+		if !cmdLine.Matched[len(cmdLine.Arguments)] && len(arguments) > 0 {
 			if cmdLine.Delimiter.HasSpaceSeparator {
-				args = cmdLine.matchDelimitedWithSpace(flags)
+				args = cmdLine.matchDelimitedWithSpace(arguments)
 			} else {
-				args = cmdLine.matchDelimitedWithoutSpace(flags)
+				args = cmdLine.matchDelimitedWithoutSpace(arguments)
 			}
 		}
 	}
@@ -226,31 +226,31 @@ func (cmdLine *CommandLine) Unmatched() *Arguments {
 	return args
 }
 
-func (cmdLine *CommandLine) matchDelimitedWithSpace(flags []string) *Arguments {
+func (cmdLine *CommandLine) matchDelimitedWithSpace(arguments []string) *Arguments {
 	var args *Arguments
 	length, allMatched := len(cmdLine.Arguments), true
 	for i := 0; i < length; i++ {
 		if !cmdLine.Matched[i] {
 			argument := cmdLine.Arguments[i]
-			for _, searchedFlag := range flags {
-				if len(argument) > len(searchedFlag) {
-					value, ok := cmdLine.Delimiter.argumentValue(argument, searchedFlag)
+			for _, searchedArg := range arguments {
+				if len(argument) > len(searchedArg) {
+					value, ok := cmdLine.Delimiter.argumentValue(argument, searchedArg)
 					if ok {
 						if args == nil {
 							args = new(Arguments)
 						}
-						args.Keys = append(args.Keys, searchedFlag)
+						args.Keys = append(args.Keys, searchedArg)
 						args.Values = append(args.Values, value)
 						args.Indices = append(args.Indices, i)
 						cmdLine.Matched[i] = true
 						break
 					}
-				} else if argument == searchedFlag {
+				} else if argument == searchedArg {
 					iNxt := i + 1
 					if args == nil {
 						args = new(Arguments)
 					}
-					args.Keys = append(args.Keys, searchedFlag)
+					args.Keys = append(args.Keys, searchedArg)
 					args.Indices = append(args.Indices, i)
 					cmdLine.Matched[i] = true
 					if iNxt < length && !cmdLine.Matched[iNxt] {
@@ -270,29 +270,29 @@ func (cmdLine *CommandLine) matchDelimitedWithSpace(flags []string) *Arguments {
 	return args
 }
 
-func (cmdLine *CommandLine) matchDelimitedWithoutSpace(flags []string) *Arguments {
+func (cmdLine *CommandLine) matchDelimitedWithoutSpace(arguments []string) *Arguments {
 	var args *Arguments
 	allMatched := true
 	for i, argument := range cmdLine.Arguments {
 		if !cmdLine.Matched[i] {
-			for _, searchedFlag := range flags {
-				if len(argument) > len(searchedFlag) {
-					value, ok := cmdLine.Delimiter.argumentValue(argument, searchedFlag)
+			for _, searchedArg := range arguments {
+				if len(argument) > len(searchedArg) {
+					value, ok := cmdLine.Delimiter.argumentValue(argument, searchedArg)
 					if ok {
 						if args == nil {
 							args = new(Arguments)
 						}
-						args.Keys = append(args.Keys, searchedFlag)
+						args.Keys = append(args.Keys, searchedArg)
 						args.Values = append(args.Values, value)
 						args.Indices = append(args.Indices, i)
 						cmdLine.Matched[i] = true
 						break
 					}
-				} else if cmdLine.Delimiter.HasEmptySeparator && argument == searchedFlag {
+				} else if cmdLine.Delimiter.HasEmptySeparator && argument == searchedArg {
 					if args == nil {
 						args = new(Arguments)
 					}
-					args.Keys = append(args.Keys, searchedFlag)
+					args.Keys = append(args.Keys, searchedArg)
 					args.Values = append(args.Values, "")
 					args.Indices = append(args.Indices, i)
 					cmdLine.Matched[i] = true
