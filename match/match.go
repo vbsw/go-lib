@@ -5,7 +5,7 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-// Package match provides simple wildcard string matching.
+// Package match provides simple wildcard string matching and substring check.
 package match
 
 import (
@@ -30,48 +30,48 @@ const (
 	escape
 )
 
-// WildcardMatch returns true, if pattern matches str.
-// Valid wildcards are "*" (any characters) and "?" (any single character).
+// WildcardMatch returns whether pattern matches string s.
+// Possible wildcards are "*" (any characters) and "?" (any single character).
 // Escape character is "\".
-func WildcardMatch(pattern, str string) bool {
-	if len(str) > 0 {
+func WildcardMatch(pattern, s string) bool {
+	if len(s) > 0 {
 		if len(pattern) > 0 {
 			i, j, state := 0, 0, none
-			for i < len(pattern) && j < len(str) {
-				p, s := pattern[i], str[j]
+			for i < len(pattern) && j < len(s) {
+				pByte, sByte := pattern[i], s[j]
 				switch state {
 				case none:
-					if p == '*' {
+					if pByte == '*' {
 						i, state = i+1, skipping
-					} else if p == '?' {
+					} else if pByte == '?' {
 						i, j = i+1, j+1
-					} else if p == '\\' {
+					} else if pByte == '\\' {
 						i, state = i+1, escape
-					} else if p != s {
+					} else if pByte != sByte {
 						return false
 					} else {
 						i, j = i+1, j+1
 					}
 				case skipping:
-					if p == '*' {
+					if pByte == '*' {
 						i++
-					} else if p == '\\' {
+					} else if pByte == '\\' {
 						i, state = i+1, skippingEscape
-					} else if p == '?' {
+					} else if pByte == '?' {
 						i, j = i+1, j+1
-					} else if p != s {
+					} else if pByte != sByte {
 						j++
 					} else {
 						i, j, state = i+1, j+1, none
 					}
 				case skippingEscape:
-					if p == s {
+					if pByte == sByte {
 						i, j, state = i+1, j+1, none
 					} else {
 						j++
 					}
 				case escape:
-					if p == s {
+					if pByte == sByte {
 						i, j, state = i+1, j+1, none
 					} else {
 						return false
@@ -79,9 +79,9 @@ func WildcardMatch(pattern, str string) bool {
 				}
 			}
 			if i == len(pattern) {
-				return j == len(str) || state == skipping || state == skippingEscape
+				return j == len(s) || state == skipping || state == skippingEscape
 			} else {
-				if j == len(str) {
+				if j == len(s) {
 					return pattern[i] == '\\' && i == len(pattern)
 				} else {
 					return false
@@ -100,52 +100,52 @@ func WildcardMatch(pattern, str string) bool {
 	return true
 }
 
-// Contains returns true, if subslices are present in data.
+// Contains returns true, if substrings are present in string s.
 //
 // The evaluation is controlled by the provided operator:
-//   - And: returns true if all subslices are contained in data.
-//   - Or:  returns true if at least one of the subslices is contained in data.
-//   - Xor: returns true if exclusivily one of the subslices is contained in data.
-func Contains[D ~string | ~[]byte, S ~[]string | ~[][]byte](data D, subslices S, op Operator) bool {
-	switch dataImpl := any(data).(type) {
+//   - And: returns true if all substrings are contained in string s.
+//   - Or:  returns true if at least one of the substrings is contained in string s.
+//   - Xor: returns true if exclusivily one of the substrings is contained in string s.
+func Contains[D ~string | ~[]byte, S ~[]string | ~[][]byte](s D, substrings S, op Operator) bool {
+	switch data := any(s).(type) {
 	case []byte:
-		switch subslicesImpl := any(subslices).(type) {
+		switch slices := any(substrings).(type) {
 		case [][]byte:
-			return containsBytes(dataImpl, subslicesImpl, op)
+			return containsBytes(data, slices, op)
 		case []string:
-			return containsStrings(dataImpl, subslicesImpl, op)
+			return containsStrings(data, slices, op)
 		}
 	case string:
-		switch subslicesImpl := any(subslices).(type) {
+		switch slices := any(substrings).(type) {
 		case [][]byte:
-			return containsBytes(*(*[]byte)(unsafe.Pointer(&dataImpl)), subslicesImpl, op)
+			return containsBytes(*(*[]byte)(unsafe.Pointer(&data)), slices, op)
 		case []string:
-			return containsStrings(*(*[]byte)(unsafe.Pointer(&dataImpl)), subslicesImpl, op)
+			return containsStrings(*(*[]byte)(unsafe.Pointer(&data)), slices, op)
 		}
 	}
 	return false
 }
 
-func containsBytes(data []byte, subslices [][]byte, op Operator) bool {
+func containsBytes(data []byte, slices [][]byte, op Operator) bool {
 	switch op {
 	case And:
-		for _, slice := range subslices {
+		for _, slice := range slices {
 			if !bytes.Contains(data, slice) {
 				return false
 			}
 		}
 		return true
 	case Or:
-		for _, slice := range subslices {
+		for _, slice := range slices {
 			if bytes.Contains(data, slice) {
 				return true
 			}
 		}
 		return false
 	case Xor:
-		for i, slice := range subslices {
+		for i, slice := range slices {
 			if bytes.Contains(data, slice) {
-				return i+1 == len(subslices) || !containsBytes(data, subslices[i+1:], Or)
+				return i+1 == len(slices) || !containsBytes(data, slices[i+1:], Or)
 			}
 		}
 		return false
@@ -153,26 +153,26 @@ func containsBytes(data []byte, subslices [][]byte, op Operator) bool {
 	return false
 }
 
-func containsStrings(data []byte, subslices []string, op Operator) bool {
+func containsStrings(data []byte, slices []string, op Operator) bool {
 	switch op {
 	case And:
-		for _, slice := range subslices {
+		for _, slice := range slices {
 			if !bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
 				return false
 			}
 		}
 		return true
 	case Or:
-		for _, slice := range subslices {
+		for _, slice := range slices {
 			if bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
 				return true
 			}
 		}
 		return false
 	case Xor:
-		for i, slice := range subslices {
+		for i, slice := range slices {
 			if bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
-				return i+1 == len(subslices) || !containsStrings(data, subslices[i+1:], Or)
+				return i+1 == len(slices) || !containsStrings(data, slices[i+1:], Or)
 			}
 		}
 		return false

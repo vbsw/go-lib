@@ -103,41 +103,41 @@ func TestWildcardMatch3(t *testing.T) {
 
 func TestContainsAnd(t *testing.T) {
 	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
-	subs := []string{"hallo", "middle", "ciao", "end", "abcdefgh-none", ""}
-	if !Contains(data, subs[:1], And) {
+	slices := []string{"hallo", "middle", "ciao", "end", "abcdefgh-none", ""}
+	if !Contains(data, slices[:1], And) {
 		t.Error("failed \"hallo\"")
 	}
-	if !Contains(data, subs[1:2], And) {
+	if !Contains(data, slices[1:2], And) {
 		t.Error("failed \"middle\"")
 	}
-	if !Contains(data, subs[2:3], And) {
+	if !Contains(data, slices[2:3], And) {
 		t.Error("failed \"ciao\"")
 	}
-	if !Contains(data, subs[:4], And) {
-		t.Error("failed subs[:4]")
+	if !Contains(data, slices[:4], And) {
+		t.Error("failed slices[:4]")
 	}
-	if !Contains(data, subs[5:6], And) {
+	if !Contains(data, slices[5:6], And) {
 		t.Error("failed \"\"")
 	}
-	if Contains(data, subs[4:5], And) {
+	if Contains(data, slices[4:5], And) {
 		t.Error("failed \"abcdefgh-none\"")
 	}
-	if Contains(data, subs, And) {
-		t.Error("failed subs")
+	if Contains(data, slices, And) {
+		t.Error("failed slices")
 	}
 }
 
 func TestContainsXor(t *testing.T) {
 	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
-	subs := []string{"hallo", "middle", "ciaoXX", "end", "abcdefgh-none", ""}
-	if !Contains(data, subs[3:5], Xor) {
-		t.Error("failed \"subs[3:5]\"")
+	slices := []string{"hallo", "middle", "ciaoXX", "end", "abcdefgh-none", ""}
+	if !Contains(data, slices[3:5], Xor) {
+		t.Error("failed \"slices[3:5]\"")
 	}
-	if !Contains(data, subs[2:5], Xor) {
-		t.Error("failed \"subs[2:5]\"")
+	if !Contains(data, slices[2:5], Xor) {
+		t.Error("failed \"slices[2:5]\"")
 	}
-	if Contains(data, subs, Xor) {
-		t.Error("failed subs")
+	if Contains(data, slices, Xor) {
+		t.Error("failed slices")
 	}
 }
 
@@ -190,10 +190,10 @@ func BenchmarkFilepathMatch(b *testing.B) {
 func BenchmarkContains(b *testing.B) {
 	result := true
 	data := "abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend"
-	subs := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
+	slices := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result = result && (Contains(data, subs, And) == false)
+		result = result && (Contains(data, slices, And) == false)
 	}
 	b.StopTimer()
 	if !result {
@@ -204,11 +204,11 @@ func BenchmarkContains(b *testing.B) {
 func BenchmarkContainsStd(b *testing.B) {
 	result := true
 	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
-	subs := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
+	slices := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		resultTmp := true
-		for _, str := range subs {
+		for _, str := range slices {
 			if !bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&str))) {
 				resultTmp = false
 				break
