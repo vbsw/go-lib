@@ -4,7 +4,7 @@
 go-lib is a collection of Go functions. It is published on <https://github.com/vbsw/go-lib>.
 
 **cl** - command line arguments parser  
-**match** - simple wildcard string matching  
+**match** - simple wildcard string matching + contains subslice check  
 
 ## References
 - https://go.dev/doc/install
