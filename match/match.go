@@ -5,7 +5,7 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-// Package match provides simple wildcard string matching and substring check.
+// Package match provides simple wildcard and substring checks.
 package match
 
 import (
