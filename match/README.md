@@ -3,7 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/match.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/match) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/match)](https://goreportcard.com/report/github.com/vbsw/go-lib/match)
 
 ## About
-Package match provides simple wildcard string matching and a contains subslice check. Package match is published on <https://github.com/vbsw/go-lib/match>.
+Package match provides simple wildcard string matching and substring check. Package match is published on <https://github.com/vbsw/go-lib/match>.
 
 ## Copyright
 Copyright 2026, Vitali Baumtrok (vbsw@mailbox.org).
@@ -14,11 +14,11 @@ match is distributed in the hope that it will be useful, but WITHOUT ANY WARRANT
 
 ## Tests
 
-tests
+run tests
 
 	go test
 
-benchmarks
+run benchmarks
 
 	go test -bench=.
 
