@@ -8,7 +8,20 @@
 // Package match provides simple wildcard string matching.
 package match
 
+import (
+	"bytes"
+	"unsafe"
+)
+
+type Operator int
+
 type stateType int
+
+const (
+	And Operator = iota
+	Or
+	Xor
+)
 
 const (
 	none stateType = iota
@@ -85,4 +98,84 @@ func WildcardMatch(pattern, str string) bool {
 		}
 	}
 	return true
+}
+
+// Contains returns true, if subslices are present in data.
+//
+// The evaluation is controlled by the provided operator:
+//   - And: returns true if all subslices are contained in data.
+//   - Or:  returns true if at least one of the subslices is contained in data.
+//   - Xor: returns true if exclusivily one of the subslices is contained in data.
+func Contains[D ~string | ~[]byte, S ~[]string | ~[][]byte](data D, subslices S, op Operator) bool {
+	switch dataImpl := any(data).(type) {
+	case []byte:
+		switch subslicesImpl := any(subslices).(type) {
+		case [][]byte:
+			return containsBytes(dataImpl, subslicesImpl, op)
+		case []string:
+			return containsStrings(dataImpl, subslicesImpl, op)
+		}
+	case string:
+		switch subslicesImpl := any(subslices).(type) {
+		case [][]byte:
+			return containsBytes(*(*[]byte)(unsafe.Pointer(&dataImpl)), subslicesImpl, op)
+		case []string:
+			return containsStrings(*(*[]byte)(unsafe.Pointer(&dataImpl)), subslicesImpl, op)
+		}
+	}
+	return false
+}
+
+func containsBytes(data []byte, subslices [][]byte, op Operator) bool {
+	switch op {
+	case And:
+		for _, slice := range subslices {
+			if !bytes.Contains(data, slice) {
+				return false
+			}
+		}
+		return true
+	case Or:
+		for _, slice := range subslices {
+			if bytes.Contains(data, slice) {
+				return true
+			}
+		}
+		return false
+	case Xor:
+		for i, slice := range subslices {
+			if bytes.Contains(data, slice) {
+				return i+1 == len(subslices) || !containsBytes(data, subslices[i+1:], Or)
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func containsStrings(data []byte, subslices []string, op Operator) bool {
+	switch op {
+	case And:
+		for _, slice := range subslices {
+			if !bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
+				return false
+			}
+		}
+		return true
+	case Or:
+		for _, slice := range subslices {
+			if bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
+				return true
+			}
+		}
+		return false
+	case Xor:
+		for i, slice := range subslices {
+			if bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&slice))) {
+				return i+1 == len(subslices) || !containsStrings(data, subslices[i+1:], Or)
+			}
+		}
+		return false
+	}
+	return false
 }

@@ -8,8 +8,10 @@
 package match
 
 import (
+	"bytes"
 	"path/filepath"
 	"testing"
+	"unsafe"
 )
 
 func TestWildcardMatch1(t *testing.T) {
@@ -99,6 +101,46 @@ func TestWildcardMatch3(t *testing.T) {
 	}
 }
 
+func TestContainsAnd(t *testing.T) {
+	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
+	subs := []string{"hallo", "middle", "ciao", "end", "abcdefgh-none", ""}
+	if !Contains(data, subs[:1], And) {
+		t.Error("failed \"hallo\"")
+	}
+	if !Contains(data, subs[1:2], And) {
+		t.Error("failed \"middle\"")
+	}
+	if !Contains(data, subs[2:3], And) {
+		t.Error("failed \"ciao\"")
+	}
+	if !Contains(data, subs[:4], And) {
+		t.Error("failed subs[:4]")
+	}
+	if !Contains(data, subs[5:6], And) {
+		t.Error("failed \"\"")
+	}
+	if Contains(data, subs[4:5], And) {
+		t.Error("failed \"abcdefgh-none\"")
+	}
+	if Contains(data, subs, And) {
+		t.Error("failed subs")
+	}
+}
+
+func TestContainsXor(t *testing.T) {
+	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
+	subs := []string{"hallo", "middle", "ciaoXX", "end", "abcdefgh-none", ""}
+	if !Contains(data, subs[3:5], Xor) {
+		t.Error("failed \"subs[3:5]\"")
+	}
+	if !Contains(data, subs[2:5], Xor) {
+		t.Error("failed \"subs[2:5]\"")
+	}
+	if Contains(data, subs, Xor) {
+		t.Error("failed subs")
+	}
+}
+
 func BenchmarkWildcardMatch(b *testing.B) {
 	result, str := true, "abcdefghijklmnopqrstuvwxyz"
 	b.ResetTimer()
@@ -138,6 +180,41 @@ func BenchmarkFilepathMatch(b *testing.B) {
 		result = result && err == nil && match == false
 		match, err = filepath.Match("*efghijklm?opqrstuvwxyz", str)
 		result = result && err == nil && match == true
+	}
+	b.StopTimer()
+	if !result {
+		b.Fatal("wrong result")
+	}
+}
+
+func BenchmarkContains(b *testing.B) {
+	result := true
+	data := "abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend"
+	subs := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result = result && (Contains(data, subs, And) == false)
+	}
+	b.StopTimer()
+	if !result {
+		b.Fatal("wrong result")
+	}
+}
+
+func BenchmarkContainsStd(b *testing.B) {
+	result := true
+	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
+	subs := []string{"middle", "hallo", "end", "ciao", "abcdefgh-none"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		resultTmp := true
+		for _, str := range subs {
+			if !bytes.Contains(data, *(*[]byte)(unsafe.Pointer(&str))) {
+				resultTmp = false
+				break
+			}
+		}
+		result = result && (resultTmp == false)
 	}
 	b.StopTimer()
 	if !result {
