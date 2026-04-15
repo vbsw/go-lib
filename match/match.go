@@ -33,7 +33,7 @@ const (
 // WildcardMatch returns whether pattern matches string s.
 // Possible wildcards are "*" (any characters) and "?" (any single character).
 // Escape character is "\".
-func WildcardMatch(pattern, s string) bool {
+func WildcardMatch(s, pattern string) bool {
 	if len(s) > 0 {
 		if len(pattern) > 0 {
 			i, j, state := 0, 0, none

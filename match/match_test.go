@@ -21,82 +21,82 @@ func TestWildcardMatch1(t *testing.T) {
 	if !WildcardMatch(" ", " ") {
 		t.Error("failed pattern \" \" with \" \"")
 	}
-	if WildcardMatch("", "abcd") {
+	if WildcardMatch("abcd", "") {
 		t.Error("failed pattern \"\" with \"abcd\"")
 	}
-	if !WildcardMatch("*", "abcd") {
+	if !WildcardMatch("abcd", "*") {
 		t.Error("failed pattern \"*\" with \"abcd\"")
 	}
-	if !WildcardMatch("*", "") {
+	if !WildcardMatch("", "*") {
 		t.Error("failed pattern \"*\" with \"\"")
 	}
-	if !WildcardMatch("****", "") {
+	if !WildcardMatch("", "****") {
 		t.Error("failed pattern \"****\" with \"\"")
 	}
-	if WildcardMatch("*?", "") {
+	if WildcardMatch("", "*?") {
 		t.Error("failed pattern \"*?\" with \"\"")
 	}
-	if !WildcardMatch("?*?", "abcd") {
+	if !WildcardMatch("abcd", "?*?") {
 		t.Error("failed pattern \"?*?\" with \"abcd\"")
 	}
-	if !WildcardMatch("?*?*?", "abc") {
+	if !WildcardMatch("abc", "?*?*?") {
 		t.Error("failed pattern \"?*?*?\" with \"abc\"")
 	}
 }
 
 func TestWildcardMatch2(t *testing.T) {
-	if !WildcardMatch("a*d", "abcd") {
+	if !WildcardMatch("abcd", "a*d") {
 		t.Error("failed pattern \"a*d\" with \"abcd\"")
 	}
-	if WildcardMatch("???", "abcd") {
+	if WildcardMatch("abcd", "???") {
 		t.Error("failed pattern \"???\" with \"abcd\"")
 	}
-	if !WildcardMatch("????", "abcd") {
+	if !WildcardMatch("abcd", "????") {
 		t.Error("failed pattern \"????\" with \"abcd\"")
 	}
-	if WildcardMatch("?????", "abcd") {
+	if WildcardMatch("abcd", "?????") {
 		t.Error("failed pattern \"?????\" with \"abcd\"")
 	}
-	if !WildcardMatch("?b*", "abcd") {
+	if !WildcardMatch("abcd", "?b*") {
 		t.Error("failed pattern \"?b*\" with \"abcd\"")
 	}
-	if !WildcardMatch("*c?", "abcd") {
+	if !WildcardMatch("abcd", "*c?") {
 		t.Error("failed pattern \"*c?\" with \"abcd\"")
 	}
-	if !WildcardMatch("a?c?e", "abcde") {
+	if !WildcardMatch("abcde", "a?c?e") {
 		t.Error("failed pattern \"a?c?e\" with \"abcde\"")
 	}
-	if !WildcardMatch("a?*e?*", "abcdefg") {
+	if !WildcardMatch("abcdefg", "a?*e?*") {
 		t.Error("failed pattern \"a?*e?*\" with \"abcdefg\"")
 	}
-	if WildcardMatch(" a?*e?*", "abcdefg") {
+	if WildcardMatch("abcdefg", " a?*e?*") {
 		t.Error("failed pattern \" a?*e?*\" with \"abcdefg\"")
 	}
 }
 
 func TestWildcardMatch3(t *testing.T) {
-	if !WildcardMatch("*\\*d", "abc*d") {
+	if !WildcardMatch("abc*d", "*\\*d") {
 		t.Error("failed pattern \"*\\*d\" with \"abc*d\"")
 	}
-	if !WildcardMatch("\\*\\?\\\\", "*?\\") {
+	if !WildcardMatch("*?\\", "\\*\\?\\\\") {
 		t.Error("failed pattern \"\\*\\?\\\\\" with \"*?\\\"")
 	}
-	if !WildcardMatch("*\\?x", "abcd?x") {
+	if !WildcardMatch("abcd?x", "*\\?x") {
 		t.Error("failed pattern \"*\\?x\" with \"abcd?x\"")
 	}
-	if !WildcardMatch("*\\?*", "abcd?efgh") {
+	if !WildcardMatch("abcd?efgh", "*\\?*") {
 		t.Error("failed pattern \"*\\?*\" with \"abcd?efgh\"")
 	}
-	if !WildcardMatch("abc\\\\", "abc\\") {
+	if !WildcardMatch("abc\\", "abc\\\\") {
 		t.Error("failed pattern \"abc\\\\\" with \"abc\\\"")
 	}
 	if WildcardMatch("abc\\", "abc\\") {
 		t.Error("failed pattern \"abc\\\" with \"abc\\\"")
 	}
-	if !WildcardMatch("*\\", "abc\\") {
+	if !WildcardMatch("abc\\", "*\\") {
 		t.Error("failed pattern \"*\\\" with \"abc\\\"")
 	}
-	if WildcardMatch("abc\\", "abc") {
+	if WildcardMatch("abc", "abc\\") {
 		t.Error("failed pattern \"abc\\\" with \"abc\"")
 	}
 }
