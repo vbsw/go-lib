@@ -13,6 +13,7 @@ import (
 	"unsafe"
 )
 
+// Operator represents a logical operator (And, Or or Xor).
 type Operator int
 
 type stateType int
