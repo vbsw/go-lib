@@ -101,6 +101,24 @@ func TestWildcardMatch3(t *testing.T) {
 	}
 }
 
+func TestWildcardMatch4(t *testing.T) {
+	if !WildcardMatch("test.txt", "*txt") {
+		t.Error("failed pattern \"*txt\" with \"test-a.txt\"")
+	}
+	if !WildcardMatch("aabaabaaa", "*aaa") {
+		t.Error("failed pattern \"*aaa\" with \"aabaabaaa\"")
+	}
+	if !WildcardMatch("aabaaabaaadccc", "*aaa*ccc") {
+		t.Error("failed pattern \"*aaa*ccc\" with \"aabaaabaaadccc\"")
+	}
+	if WildcardMatch("abbaabaaa", "*a?aa") {
+		t.Error("failed pattern \"*a?aa\" with \"abbaabaaa\"")
+	}
+	if !WildcardMatch("abbaabaaa", "*a?aa*") {
+		t.Error("failed pattern \"*a?aa*\" with \"abbaabaaa\"")
+	}
+}
+
 func TestContainsAnd(t *testing.T) {
 	data := []byte("abcdefghijklmnopqrstuvwxyhallozabcdefghijklmiddlenopqrstuvwxyzabciaodefghijklmnopqrstuvwxyzend")
 	slices := []string{"hallo", "middle", "ciao", "end", "abcdefgh-none", ""}
@@ -145,14 +163,14 @@ func BenchmarkWildcardMatch(b *testing.B) {
 	result, str := true, "abcdefghijklmnopqrstuvwxyz"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result = result && (WildcardMatch("*", str) == true)
-		result = result && (WildcardMatch("*asdf", str) == false)
-		result = result && (WildcardMatch("asdf*", str) == false)
-		result = result && (WildcardMatch("abcdefghijklmnopqr*", str) == true)
-		result = result && (WildcardMatch("*jklmnopqrstuvwxyz", str) == true)
-		result = result && (WildcardMatch("*fghijklmnopqrst*", str) == true)
-		result = result && (WildcardMatch("*fghijklmnopqrst", str) == false)
-		result = result && (WildcardMatch("*efghijklm?opqrstuvwxyz", str) == true)
+		result = result && (WildcardMatch(str, "*") == true)
+		result = result && (WildcardMatch(str, "*asdf") == false)
+		result = result && (WildcardMatch(str, "asdf*") == false)
+		result = result && (WildcardMatch(str, "abcdefghijklmnopqr*") == true)
+		result = result && (WildcardMatch(str, "*jklmnopqrstuvwxyz") == true)
+		result = result && (WildcardMatch(str, "*fghijklmnopqrst*") == true)
+		result = result && (WildcardMatch(str, "*fghijklmnopqrst") == false)
+		result = result && (WildcardMatch(str, "*efghijklm?opqrstuvwxyz") == true)
 	}
 	b.StopTimer()
 	if !result {

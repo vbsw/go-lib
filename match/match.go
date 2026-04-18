@@ -37,25 +37,29 @@ const (
 func WildcardMatch(s, pattern string) bool {
 	if len(s) > 0 {
 		if len(pattern) > 0 {
-			i, j, state := 0, 0, none
+			i, j, ir, jr, state, sr := 0, 0, 0, 0, none, none
 			for i < len(pattern) && j < len(s) {
 				pByte, sByte := pattern[i], s[j]
 				switch state {
 				case none:
 					if pByte == '*' {
-						i, state = i+1, skipping
+						i, state, sr = i+1, skipping, none
 					} else if pByte == '?' {
 						i, j = i+1, j+1
 					} else if pByte == '\\' {
 						i, state = i+1, escape
 					} else if pByte != sByte {
-						return false
+						if sr == none {
+							return false
+						} else {
+							i, j, state, sr = ir, jr, sr, none
+						}
 					} else {
 						i, j = i+1, j+1
 					}
 				case skipping:
 					if pByte == '*' {
-						i++
+						i, sr = i+1, none
 					} else if pByte == '\\' {
 						i, state = i+1, skippingEscape
 					} else if pByte == '?' {
@@ -63,10 +67,16 @@ func WildcardMatch(s, pattern string) bool {
 					} else if pByte != sByte {
 						j++
 					} else {
+						if sr == none {
+							ir, jr, sr = i, j+1, skipping
+						}
 						i, j, state = i+1, j+1, none
 					}
 				case skippingEscape:
 					if pByte == sByte {
+						if sr == none {
+							ir, jr, sr = i, j+1, skippingEscape
+						}
 						i, j, state = i+1, j+1, none
 					} else {
 						j++
@@ -75,7 +85,11 @@ func WildcardMatch(s, pattern string) bool {
 					if pByte == sByte {
 						i, j, state = i+1, j+1, none
 					} else {
-						return false
+						if sr == none {
+							return false
+						} else {
+							i, j, state, sr = ir, jr, sr, none
+						}
 					}
 				}
 			}
