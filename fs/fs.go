@@ -68,7 +68,7 @@ func (reader *FileReader) Read(keepN int) bool {
 		reader.Err = err
 	}
 	reader.Offset += int64(reader.NRead)
-	return reader.NRead > 0 && reader.Err != nil
+	return reader.NRead > 0 && reader.Err == nil
 }
 
 // IsOpen returns true if file is open.
@@ -99,6 +99,7 @@ func (reader *FileReader) Close() {
 
 // Stat calls os.Stat(path), stores result in Info.
 // It returns true if file exists.
+// Error is stored in Err.
 func (file *File) Stat(path string) bool {
 	file.Info, file.Err = os.Stat(path)
 	return file.Info != nil && (file.Err == nil || !os.IsNotExist(file.Err))
