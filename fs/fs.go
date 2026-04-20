@@ -12,6 +12,12 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
+)
+
+var (
+	ErrBufferOutOfMemory = errors.New("buffer out of memory")
+	errDummy             = errors.New("dummy")
 )
 
 type File struct {
@@ -60,7 +66,7 @@ func (reader *FileReader) Read(keepN int) bool {
 		reader.NRead, err = reader.file.Read(reader.Buffer[keepN:])
 		reader.NRead += keepN
 	} else {
-		err = errors.New("buffer out of memory")
+		err = ErrBufferOutOfMemory
 	}
 	if err == io.EOF {
 		reader.Err = nil
@@ -68,7 +74,7 @@ func (reader *FileReader) Read(keepN int) bool {
 		reader.Err = err
 	}
 	reader.Offset += int64(reader.NRead)
-	return reader.NRead > 0 && reader.Err == nil
+	return reader.NRead > 0 && err == nil
 }
 
 // IsOpen returns true if file is open.
@@ -103,4 +109,40 @@ func (reader *FileReader) Close() {
 func (file *File) Stat(path string) bool {
 	file.Info, file.Err = os.Stat(path)
 	return file.Info != nil && (file.Err == nil || !os.IsNotExist(file.Err))
+}
+
+// IsEmpty returns whether directory or file is empty.
+// A directory is empty if it has only empty directories and empty files.
+// A file is empty if it is a regular file with size 0.
+func (file *File) IsEmpty(path string) bool {
+	file.Info, file.Err = os.Stat(path)
+	if file.Info != nil {
+		if file.Info.Mode().IsRegular() {
+			if file.Err == nil {
+				return file.Info.Size() == 0
+			}
+			return os.IsNotExist(file.Err)
+		} else if file.Info.Mode().IsDir() {
+			return isDirEmpty(file, path)
+		}
+	}
+	return false
+}
+
+func isDirEmpty(file *File, path string) bool {
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			if info != nil {
+				if info.IsDir() || info.Mode().IsRegular() && info.Size() == 0 {
+					return nil
+				}
+				return errDummy
+			}
+			return errDummy
+		} else if os.IsNotExist(file.Err) {
+			return nil
+		}
+		return errDummy
+	})
+	return err == nil
 }
