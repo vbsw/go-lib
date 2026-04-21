@@ -111,6 +111,26 @@ func (file *File) Stat(path string) bool {
 	return file.Info != nil && (file.Err == nil || !os.IsNotExist(file.Err))
 }
 
+// IsDir returns true if path is a directory.
+// Error is stored in Err.
+func (file *File) IsDir(path string) bool {
+	file.Info, file.Err = os.Stat(path)
+	if file.Err == nil && file.Info != nil {
+		return file.Info.IsDir()
+	}
+	return false
+}
+
+// IsRegular returns true if path is a regular file.
+// Error is stored in Err.
+func (file *File) IsRegular(path string) bool {
+	file.Info, file.Err = os.Stat(path)
+	if file.Err == nil && file.Info != nil {
+		return file.Info.Mode().IsRegular()
+	}
+	return false
+}
+
 // IsEmpty returns whether directory or file is empty.
 // A directory is empty if it has only empty directories and empty files.
 // A file is empty if it is a regular file with size 0.
@@ -122,7 +142,7 @@ func (file *File) IsEmpty(path string) bool {
 				return file.Info.Size() == 0
 			}
 			return os.IsNotExist(file.Err)
-		} else if file.Info.Mode().IsDir() {
+		} else if file.Info.IsDir() {
 			return isDirEmpty(file, path)
 		}
 	}
