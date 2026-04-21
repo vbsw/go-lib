@@ -15,7 +15,7 @@ import (
 	"syscall"
 )
 
-// IsHidden returns true, if file is hidden.
+// IsHidden returns true when file is hidden.
 func IsHidden(path string) bool {
 	ptr, errPtr := syscall.UTF16PtrFromString(path)
 	if errPtr == nil && ptr != nil {

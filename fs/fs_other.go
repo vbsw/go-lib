@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-// IsHidden returns true, if file is hidden.
+// IsHidden returns true when file is hidden.
 func IsHidden(path string) bool {
 	fileName := filepath.Base(path)
 	return strings.HasPrefix(fileName, ".")

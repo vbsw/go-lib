@@ -115,7 +115,7 @@ func WildcardMatch(s, pattern string) bool {
 	return true
 }
 
-// Contains returns true, if substrings are present in string s.
+// Contains returns true if substrings are present in string s.
 //
 // The evaluation is controlled by the provided operator:
 //   - And: returns true if all substrings are contained in string s.
