@@ -34,8 +34,16 @@ type FileReader struct {
 	NRead  int
 }
 
+// FileWriter writes files.
+type FileWriter struct {
+	File
+	Offset   int64
+	file     *os.File
+	NWritten int
+}
+
 // Open opens file for reading and initializes Info.
-// It returns true if file was successfully opened.
+// Returns true if file was successfully opened.
 // Error is stored in Err.
 func (reader *FileReader) Open(path string) bool {
 	reader.Offset, reader.NRead = 0, 0
@@ -54,9 +62,9 @@ func (reader *FileReader) Open(path string) bool {
 
 // Read copies the last keepN bytes to the beginning
 // of the buffer and then reads from the file into the buffer.
-// Buffer is starting at offset keepN. It returns true if any
+// Buffer is starting at offset keepN. Returns true if any
 // bytes have been read and no error encountered.
-// The error is stored in Err unless it is io.EOF.
+// Error is stored in Err unless it is io.EOF.
 func (reader *FileReader) Read(keepN int) bool {
 	var err error
 	if keepN <= 0 {
@@ -83,7 +91,7 @@ func (reader *FileReader) IsOpen() bool {
 }
 
 // Seek sets the offset for the next Read on file.
-// It returns true if seek was successful.
+// Returns true if seek was successful.
 // Error is stored in Err.
 func (reader *FileReader) Seek(offset int64) bool {
 	reader.Offset, reader.Err = reader.file.Seek(offset, io.SeekStart)
@@ -104,7 +112,7 @@ func (reader *FileReader) Close() {
 }
 
 // Stat calls os.Stat(path), stores result in Info.
-// It returns true if file exists.
+// Returns true if file exists.
 // Error is stored in Err.
 func (file *File) Stat(path string) bool {
 	file.Info, file.Err = os.Stat(path)
@@ -147,6 +155,57 @@ func (file *File) IsEmpty(path string) bool {
 		}
 	}
 	return false
+}
+
+// Open opens file with FileMode 0666 for writing and initializes Info.
+// Returns true if file was successfully opened.
+// Error is stored in Err.
+func (writer *FileWriter) Open(path string) bool {
+	writer.file, writer.Err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if writer.Err == nil {
+		writer.Info, writer.Err = writer.file.Stat()
+		if writer.Err != nil {
+			writer.file.Close()
+		}
+	}
+	if writer.Err != nil {
+		writer.file = nil
+	}
+	return writer.file != nil
+}
+
+// Write writes bytes to file.
+// Error is stored in Err.
+func (writer *FileWriter) Write(bytes []byte) bool {
+	writer.NWritten, writer.Err = writer.file.Write(bytes)
+	writer.Offset += int64(writer.NWritten)
+	return writer.NWritten > 0 && writer.Err == nil
+}
+
+// IsOpen returns true if file is open.
+func (writer *FileWriter) IsOpen() bool {
+	return writer.file != nil
+}
+
+// Seek sets the offset for the next Write on file.
+// Returns true if seek was successful.
+// Error is stored in Err.
+func (writer *FileWriter) Seek(offset int64) bool {
+	writer.Offset, writer.Err = writer.file.Seek(offset, io.SeekStart)
+	return writer.Err == nil
+}
+
+// Close closes the file.
+// Err is set only if it was previously nil.
+func (writer *FileWriter) Close() {
+	if writer.file != nil {
+		if writer.Err == nil {
+			writer.Err = writer.file.Close()
+		} else {
+			writer.file.Close()
+		}
+		writer.file = nil
+	}
 }
 
 func isDirEmpty(file *File, path string) bool {
