@@ -182,6 +182,14 @@ func (writer *FileWriter) Write(bytes []byte) bool {
 	return writer.NWritten > 0 && writer.Err == nil
 }
 
+// Write writes bytes to file.
+// Error is stored in Err.
+func (writer *FileWriter) StdoutWrite(bytes []byte) bool {
+	writer.NWritten, writer.Err = os.Stdout.Write(bytes)
+	writer.Offset += int64(writer.NWritten)
+	return writer.NWritten > 0 && writer.Err == nil
+}
+
 // IsOpen returns whether file is open.
 func (writer *FileWriter) IsOpen() bool {
 	return writer.file != nil
