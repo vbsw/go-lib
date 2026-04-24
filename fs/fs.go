@@ -15,6 +15,10 @@ import (
 	"path/filepath"
 )
 
+const (
+	maxInt = int((^uint(0)) >> 1)
+)
+
 var (
 	ErrBufferOutOfMemory = errors.New("buffer out of memory")
 	errDummy             = errors.New("dummy")
@@ -96,6 +100,28 @@ func (reader *FileReader) IsOpen() bool {
 func (reader *FileReader) Seek(offset int64) bool {
 	reader.Offset, reader.Err = reader.file.Seek(offset, io.SeekStart)
 	return reader.Err == nil
+}
+
+// CopyTo copies n bytes to path.
+// Error is stored in Err.
+func (reader *FileReader) CopyTo(path string, n int64) bool {
+	var writer FileWriter
+	reader.NRead = 0
+	if writer.Open(path) {
+		written, err := io.CopyN(writer.file, reader.file, n)
+		reader.Offset += written
+		if !errors.Is(err, io.EOF) {
+			writer.Err = err
+		}
+		if written <= int64(maxInt) {
+			reader.NRead = int(written)
+		} else {
+			reader.NRead = maxInt
+		}
+		writer.Close()
+	}
+	reader.Err = writer.Err
+	return reader.NRead > 0 && writer.Err == nil
 }
 
 // Close closes the file.
@@ -201,6 +227,28 @@ func (writer *FileWriter) IsOpen() bool {
 func (writer *FileWriter) Seek(offset int64) bool {
 	writer.Offset, writer.Err = writer.file.Seek(offset, io.SeekStart)
 	return writer.Err == nil
+}
+
+// CopyFrom copies n bytes from path.
+// Error is stored in Err.
+func (writer *FileWriter) CopyFrom(path string, n int64) bool {
+	var reader FileReader
+	writer.NWritten = 0
+	if reader.Open(path) {
+		written, err := io.CopyN(writer.file, reader.file, n)
+		writer.Offset += written
+		if !errors.Is(err, io.EOF) {
+			reader.Err = err
+		}
+		if written <= int64(maxInt) {
+			writer.NWritten = int(written)
+		} else {
+			writer.NWritten = maxInt
+		}
+		reader.Close()
+	}
+	writer.Err = reader.Err
+	return writer.NWritten > 0 && reader.Err == nil
 }
 
 // Close closes the file.
