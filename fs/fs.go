@@ -102,9 +102,31 @@ func (reader *FileReader) Seek(offset int64) bool {
 	return reader.Err == nil
 }
 
+// CopyTo copies everything to path.
+// Error is stored in Err.
+func (reader *FileReader) CopyTo(path string) bool {
+	var writer FileWriter
+	reader.NRead = 0
+	if writer.Open(path) {
+		written, err := io.Copy(writer.file, reader.file)
+		reader.Offset += written
+		if !errors.Is(err, io.EOF) {
+			writer.Err = err
+		}
+		if written <= int64(maxInt) {
+			reader.NRead = int(written)
+		} else {
+			reader.NRead = maxInt
+		}
+		writer.Close()
+	}
+	reader.Err = writer.Err
+	return reader.NRead > 0 && writer.Err == nil
+}
+
 // CopyTo copies n bytes to path.
 // Error is stored in Err.
-func (reader *FileReader) CopyTo(path string, n int64) bool {
+func (reader *FileReader) CopyNTo(path string, n int64) bool {
 	var writer FileWriter
 	reader.NRead = 0
 	if writer.Open(path) {
@@ -138,7 +160,7 @@ func (reader *FileReader) Close() {
 }
 
 // Stat calls os.Stat(path) and stores result in Info.
-// Returns true when file exists.
+// Returns true when file exists and is readable.
 // Error is stored in Err.
 func (file *File) Stat(path string) bool {
 	file.Info, file.Err = os.Stat(path)
@@ -231,7 +253,29 @@ func (writer *FileWriter) Seek(offset int64) bool {
 
 // CopyFrom copies n bytes from path.
 // Error is stored in Err.
-func (writer *FileWriter) CopyFrom(path string, n int64) bool {
+func (writer *FileWriter) CopyFrom(path string) bool {
+	var reader FileReader
+	writer.NWritten = 0
+	if reader.Open(path) {
+		written, err := io.Copy(writer.file, reader.file)
+		writer.Offset += written
+		if !errors.Is(err, io.EOF) {
+			reader.Err = err
+		}
+		if written <= int64(maxInt) {
+			writer.NWritten = int(written)
+		} else {
+			writer.NWritten = maxInt
+		}
+		reader.Close()
+	}
+	writer.Err = reader.Err
+	return writer.NWritten > 0 && reader.Err == nil
+}
+
+// CopyFrom copies n bytes from path.
+// Error is stored in Err.
+func (writer *FileWriter) CopyNFrom(path string, n int64) bool {
 	var reader FileReader
 	writer.NWritten = 0
 	if reader.Open(path) {
@@ -262,6 +306,12 @@ func (writer *FileWriter) Close() {
 		}
 		writer.file = nil
 	}
+}
+
+// IsExist returns true when file exists. Mode is ignored.
+func IsExist(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }
 
 func isDirEmpty(file *File, path string) bool {
