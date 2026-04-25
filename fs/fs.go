@@ -102,7 +102,7 @@ func (reader *FileReader) Seek(offset int64) bool {
 	return reader.Err == nil
 }
 
-// CopyTo copies everything to path.
+// CopyTo copies all bytes from FileReader to path.
 // Error is stored in Err.
 func (reader *FileReader) CopyTo(path string) bool {
 	var writer FileWriter
@@ -124,7 +124,7 @@ func (reader *FileReader) CopyTo(path string) bool {
 	return reader.NRead > 0 && writer.Err == nil
 }
 
-// CopyTo copies n bytes to path.
+// CopyTo copies n bytes from FileReader to path.
 // Error is stored in Err.
 func (reader *FileReader) CopyNTo(path string, n int64) bool {
 	var writer FileWriter
@@ -251,7 +251,7 @@ func (writer *FileWriter) Seek(offset int64) bool {
 	return writer.Err == nil
 }
 
-// CopyFrom copies n bytes from path.
+// CopyFrom copies all bytes from path to FileWriter.
 // Error is stored in Err.
 func (writer *FileWriter) CopyFrom(path string) bool {
 	var reader FileReader
@@ -273,7 +273,7 @@ func (writer *FileWriter) CopyFrom(path string) bool {
 	return writer.NWritten > 0 && reader.Err == nil
 }
 
-// CopyFrom copies n bytes from path.
+// CopyFrom copies n bytes from path to FileWriter.
 // Error is stored in Err.
 func (writer *FileWriter) CopyNFrom(path string, n int64) bool {
 	var reader FileReader
