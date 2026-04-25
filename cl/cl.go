@@ -115,8 +115,8 @@ func (cmdLine *CommandLine) MatchDelimited(arguments ...string) *Arguments {
 	return args
 }
 
-// RevertMatched sets arguments in CommandLine to unmatched using args.Indices.
-func (cmdLine *CommandLine) RevertMatched(args ...*Arguments) {
+// UndoMatched sets arguments in CommandLine to unmatched using args.Indices.
+func (cmdLine *CommandLine) UndoMatched(args ...*Arguments) {
 	allMatched := cmdLine.Matched[len(cmdLine.Arguments)]
 	for _, aargs := range args {
 		if aargs != nil {
