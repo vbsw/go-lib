@@ -8,7 +8,7 @@
 // Package cmodule provides C batch processing.
 package cmodule
 
-// #include <stdlib.h>
+// #include <stdint.h>
 // #include "cmodule.h"
 import "C"
 import (
@@ -17,157 +17,158 @@ import (
 	"unsafe"
 )
 
-var (
-	ErrSeqBufferOutOfMemory = errors.New("sequence buffer out of memory")
+const (
+	Init SequenceType = iota
+	Run
+	Destroy
 )
 
 const (
-	maxInt64 = int64((^uint64(0)) >> 1)
 	maxInt   = int((^uint(0)) >> 1)
 )
 
+var (
+	ErrBufferOutOfMemory   = errors.New("C buffer out of memory")
+	ErrMaxModulesExceeded  = errors.New("maximum modules count exceeded")
+	ErrDataModulesMismatch = errors.New("mismatch of data length and modules count")
+)
+
+type SequenceType int
+
+type Sequence struct {
+	Err        error
+	modules    []Module
+	buffer     []unsafe.Pointer
+	syncLen    int
+	bufferSize int
+}
+
 type Module interface {
-	CData() unsafe.Pointer
-	CDestroyFunc() unsafe.Pointer
-	CRunFunc() unsafe.Pointer
-	CInitFunc() unsafe.Pointer
-	CRemoveFunc() unsafe.Pointer
+	CProcessor(seqenceType SequenceType) (unsafe.Pointer, unsafe.Pointer)
 	CToError(modErrId, sysErrId int64, errInfo string) error
 	SetCData(data unsafe.Pointer)
 }
 
-type Sequence struct {
-	Modules []Module
-	buffer  []unsafe.Pointer
+// Len returns current number of modules in Sequence.
+func (seq *Sequence) Len() int {
+	return len(seq.modules)
 }
 
-// BufferSize returns size of buffer being used by Sequence.
+// Cap returns possible number of modules in Sequence before reallocating.
+func (seq *Sequence) Cap() int {
+	return len(seq.buffer) / 2
+}
+
+// BufferSize returns C buffer size in bytes that's allocated by Sequence.
 func (seq *Sequence) BufferSize() int {
-	return len(seq.buffer)
+	return seq.bufferSize
 }
 
-// ProcessInit processes Modules using CInitFunc of each Module.
-// If no error occurs SetCData is called on each Module afterwards.
-func (seq *Sequence) ProcessInit(passes int) error {
-	if len(seq.Modules) > 0 {
-		err := seq.ensureBuffer()
-		if err == nil {
-			var errIdx C.size_t
-			var err1C, err2C C.longlong
-			var errStrC *C.char
-			modulesLenC, passesC := C.size_t(len(seq.Modules)), C.int(passes)
-			for i, mod := range seq.Modules {
-				seq.buffer[i] = mod.CInitFunc()
-				seq.buffer[i+len(seq.Modules)] = mod.CData()
-			}
-			C.vbsw_cmodule_proc(&seq.buffer[0], modulesLenC, passesC, &errIdx, &err1C, &err2C, &errStrC)
-			if err1C == 0 {
-				for i, mod := range seq.Modules {
-					mod.SetCData(seq.buffer[i+len(seq.Modules)])
-				}
+// EnsureCap preallocates memory where capacity is the number of modules
+// that can be used before reallocating.
+// Error is stored in Err.
+func (seq *Sequence) EnsureCap(capacity int) error {
+	if seq.Err == nil {
+		if seq.Cap() < capacity {
+			if int64(maxInt) >= (int64(capacity)+2)*2 {
+				seq.initBuffer(capacity)
 			} else {
-				err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
+				seq.Err = ErrMaxModulesExceeded
 			}
 		}
-		return err
 	}
-	return nil
+	return seq.Err
 }
 
-// ProcessRun processes Modules using CRunFunc of each Module.
-func (seq *Sequence) ProcessRun(passes int) error {
-	if len(seq.Modules) > 0 {
-		err := seq.ensureBuffer()
-		if err == nil {
-			var errIdx C.size_t
-			var err1C, err2C C.longlong
-			var errStrC *C.char
-			modulesLenC, passesC := C.size_t(len(seq.Modules)), C.int(passes)
-			for i, mod := range seq.Modules {
-				seq.buffer[i] = mod.CRunFunc()
-				seq.buffer[i+len(seq.Modules)] = mod.CData()
-			}
-			C.vbsw_cmodule_proc(&seq.buffer[0], modulesLenC, passesC, &errIdx, &err1C, &err2C, &errStrC)
-			if err1C != 0 {
-				err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
-			}
-		}
-		return err
-	}
-	return nil
-}
-
-// ProcessRemove processes Modules using CRemoveFunc of each Module.
-func (seq *Sequence) ProcessRemove(passes int, moduleIndices ...int) error {
-	if len(seq.Modules) > 0 {
-		err := seq.ensureBuffer()
-		if err == nil {
-			var errIdx C.size_t
-			var err1C, err2C C.longlong
-			var errStrC *C.char
-			modulesLenC, passesC := C.size_t(len(seq.Modules)), C.int(passes)
-			for i, mod := range seq.Modules {
-				seq.buffer[i] = mod.CRemoveFunc()
-				seq.buffer[i+len(seq.Modules)] = mod.CData()
-			}
-			C.vbsw_cmodule_rm(&seq.buffer[0], modulesLenC, passesC, &errIdx, &err1C, &err2C, &errStrC)
-			if err1C != 0 {
-				err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
-			}
-		}
-		return err
-	}
-	return nil
-}
-
-// ProcessDestroy processes Modules using CDestroyFunc of each Module.
-func (seq *Sequence) ProcessDestroy(passes int) error {
-	if len(seq.Modules) > 0 {
-		err := seq.ensureBuffer()
-		if err == nil {
-			var errIdx C.size_t
-			var err1C, err2C C.longlong
-			var errStrC *C.char
-			modulesLenC, passesC := C.size_t(len(seq.Modules)), C.int(passes)
-			for i, mod := range seq.Modules {
-				seq.buffer[i] = mod.CDestroyFunc()
-				seq.buffer[i+len(seq.Modules)] = mod.CData()
-			}
-			C.vbsw_cmodule_proc(&seq.buffer[0], modulesLenC, passesC, &errIdx, &err1C, &err2C, &errStrC)
-			if err1C != 0 {
-				err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
-			}
-		}
-		return err
-	}
-	return nil
-}
-
-// Close releases buffer memory used by Sequence.
-func (seq *Sequence) Close() error {
-	if len(seq.buffer) > 0 {
-		C.free(unsafe.Pointer(&seq.buffer[0]))
-		seq.buffer = seq.buffer[:0]
-	}
-	return nil
-}
-
-func (seq *Sequence) ensureBuffer() error {
-	if len(seq.buffer) < len(seq.Modules)*2 {
-		var sizeC C.size_t
-		var bufferC *unsafe.Pointer
-		if len(seq.buffer) == 0 {
-			C.vbsw_cmodule_alloc_buffer(&bufferC, &sizeC, nil, C.size_t(len(seq.Modules)))
+// Add adds a module to Sequence.
+// Error is stored in Err.
+func (seq *Sequence) Add(module Module) error {
+	if seq.Err == nil {
+		if int64(maxInt) >= (int64(len(seq.modules))+2)*2 {
+			seq.modules = append(seq.modules, module)
 		} else {
-			C.vbsw_cmodule_alloc_buffer(&bufferC, &sizeC, &seq.buffer[0], C.size_t(len(seq.Modules)))
+			seq.Err = ErrMaxModulesExceeded
 		}
-		if sizeC > 0 && uint64(sizeC) <= uint64(maxInt) {
-			seq.buffer = unsafe.Slice(bufferC, int(sizeC))
-			return nil
-		}
-		return ErrSeqBufferOutOfMemory
 	}
-	return nil
+	return seq.Err
+}
+
+// Set prepares C functions and C data to be ran.
+// Error is stored in Err.
+func (seq *Sequence) Set(seqenceType SequenceType) error {
+	if seq.Err == nil {
+		if seq.Cap() < len(seq.modules) {
+			seq.initBuffer(len(seq.modules))
+		}
+		if seq.Err == nil {
+			for i, mod := range seq.modules {
+				seq.buffer[i], seq.buffer[i+len(seq.modules)] = mod.CProcessor(seqenceType)
+			}
+		}
+	}
+	return seq.Err
+}
+
+// Run processes data in C.
+// Error is stored in Err.
+func (seq *Sequence) Run(passes int) error {
+	if seq.Err == nil {
+		var errIdx C.int32_t
+		var err1C, err2C C.int64_t
+		var errStrC *C.char
+		lenC, sizeC, passesC := C.int32_t(len(seq.buffer)), C.int32_t(seq.bufferSize), C.int32_t(passes)
+		C.vbsw_cmodule_proc(&seq.buffer[0], lenC, &sizeC, passesC, &errIdx, &err1C, &err2C, &errStrC)
+		seq.bufferSize = int(sizeC)
+		if err1C != 0 {
+			seq.Err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
+		}
+	}
+	return seq.Err
+}
+
+// SyncData writes C data to modules.
+// Error is stored in Err.
+func (seq *Sequence) SyncData() error {
+	if seq.Err == nil {
+		if seq.syncLen == len(seq.modules) {
+			for i, mod := range seq.modules {
+				mod.SetCData(seq.buffer[i+len(seq.modules)])
+			}
+		} else {
+			seq.Err = ErrDataModulesMismatch
+		}
+	}
+	return seq.Err
+}
+
+func (seq *Sequence) initBuffer(modulesLen int) {
+	var bufferC *unsafe.Pointer
+	lenC, sizeC := C.int32_t(len(seq.buffer)), C.int32_t(seq.bufferSize)
+	if lenC > 0 {
+		bufferC = &seq.buffer[0]
+	}
+	C.vbsw_cmodule_alloc_buffer(&bufferC, &lenC, &sizeC, C.int32_t(modulesLen))
+	if sizeC > 0 {
+		seq.buffer = unsafe.Slice(bufferC, int(lenC))
+		seq.bufferSize = int(sizeC)
+		seq.syncLen = modulesLen
+	} else {
+		seq.Err = ErrBufferOutOfMemory
+	}
+}
+
+// Close releases modules and C memory.
+func (seq *Sequence) Close() error {
+	if seq.Err == nil {
+		if len(seq.buffer) > 0 {
+			C.vbsw_cmodule_free(&seq.buffer[0], C.int32_t(len(seq.buffer)))
+			seq.modules = nil
+			seq.buffer = nil
+			seq.syncLen = 0
+			seq.bufferSize = 0
+		}
+	}
+	return seq.Err
 }
 
 func (seq *Sequence) toError(errIdx int, modErrId, sysErrId int64, errStrC *C.char) error {
@@ -175,7 +176,7 @@ func (seq *Sequence) toError(errIdx int, modErrId, sysErrId int64, errStrC *C.ch
 	if errStrC != nil {
 		errInfo = C.GoString(errStrC)
 	}
-	err := seq.Modules[errIdx].CToError(modErrId, sysErrId, errInfo)
+	err := seq.modules[errIdx].CToError(modErrId, sysErrId, errInfo)
 	if err == nil {
 		var errStr string
 		if modErrId < 1000000 {

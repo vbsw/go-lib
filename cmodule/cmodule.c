@@ -6,33 +6,50 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <assert.h>
 #include "cmodule.h"
 
-#define BUF_SIZE_FUNCDATA(len) (sizeof(void*)*(len*2))
-#define BUF_SIZE_LENSORT(len) (sizeof(void*)*(len*2))
-#define BUF_SIZE_MODNAMES(len) (sizeof(char*)*(len*80))
-#define BUF_SIZE_ERRSTR (sizeof(char)*300)
-
-void vbsw_cmodule_alloc_buffer(void ***const data, size_t *const data_len, void **const data_old, const size_t modules_len) {
-	const size_t size = BUF_SIZE_FUNCDATA(modules_len)+BUF_SIZE_LENSORT(modules_len)+BUF_SIZE_MODNAMES(modules_len) + BUF_SIZE_ERRSTR;
-	const size_t data_len_new = (size+(sizeof(void*)-1))/sizeof(void*);
-	const size_t data_len_size = sizeof(void*)*data_len_new;
-	if (data_len[0] < data_len_new && data_len_new < data_len_size) {
-		void **const data_new = (void**)malloc(data_len_size);
-		if (data_new) {
-			data[0] = data_new;
-			data_len[0] = data_len_new;
-			if (data_old)
-				free(data_old);
+void vbsw_cmodule_alloc_buffer(void ***const data, int32_t *const data_len, int32_t *const data_size, const int32_t mod_len_new) {
+	const int64_t buffer_len_old = (int64_t)data_len[0]+2;
+	const int64_t buffer_len_new = ((int64_t)mod_len_new+1)*2;
+	if (buffer_len_old < buffer_len_new) {
+		const int64_t buffer_size_new = buffer_len_new*(int64_t)sizeof(void*);
+		const int32_t *const buffer_ext1_old = (const int32_t*)(data[0] ? data[0][data_len[0]] : 0);
+		const int32_t *const buffer_ext2_old = (const int32_t*)0;
+		const int64_t buffer_ext1_size_old = (int64_t)(buffer_ext1_old ? buffer_ext1_old[0] : 0);
+		const int64_t buffer_ext2_size_old = (int64_t)0;
+		const int64_t data_size_new = buffer_size_new+buffer_ext1_size_old+buffer_ext2_size_old;
+		if ((int64_t)(INT32_MAX) >= data_size_new) {
+			void **const buffer_new = (void**)malloc((size_t)buffer_size_new);
+			if (buffer_new) {
+				if (data[0])
+					free(data[0]);
+				buffer_new[buffer_len_new-2] = (void*)buffer_ext1_old;
+				buffer_new[buffer_len_new-1] = (void*)buffer_ext2_old;
+				data[0] = buffer_new;
+				data_len[0] = buffer_len_new-2;
+				data_size[0] = (int32_t)data_size_new;
+			} else {
+				data_size[0] = 0;
+			}
+		} else {
+			data_size[0] = 0;
 		}
+	} else {
+		data_size[0] = 0;
 	}
 }
 
-void vbsw_cmodule_proc(void **const data, const size_t modules_len, const int passes, size_t *const err_idx, long long *const err1, long long *const err2, char **const err_str) {
+void vbsw_cmodule_proc(void **const data, const int32_t data_len, int32_t *const data_size, const int passes, int32_t *const err_idx, int64_t *const err1, int64_t *const err2, char **const err_str) {
 	assert(data);
 }
 
-void vbsw_cmodule_rm(void **const data, const size_t modules_len, const int passes, size_t *const err_idx, long long *const err1, long long *const err2, char **const err_str) {
+void vbsw_cmodule_free(void **const data, const int32_t data_len) {
 	assert(data);
+	if (data[data_len])
+		free(data[data_len]);
+	if (data[data_len+1])
+		free(data[data_len+1]);
+	free(data);
 }

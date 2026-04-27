@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-extern void vbsw_cmodule_alloc_buffer(void ***data, size_t *data_len, void **data_old, size_t modules_len);
-extern void vbsw_cmodule_proc(void **data, size_t modules_len, int passes, size_t *err_idx, long long *err1, long long *err2, char **err_str);
-extern void vbsw_cmodule_rm(void **data, size_t modules_len, int passes, size_t *err_idx, long long *err1, long long *err2, char **err_str);
+extern void vbsw_cmodule_alloc_buffer(void ***data, int32_t *data_len, int32_t *data_size, int32_t mod_len_new);
+extern void vbsw_cmodule_proc(void **data, int32_t data_len, int32_t *data_size, int passes, int32_t *err_idx, int64_t *err1, int64_t *err2, char **err_str);
+extern void vbsw_cmodule_free(void **data, int32_t data_len);
 
 #ifdef __cplusplus
 }

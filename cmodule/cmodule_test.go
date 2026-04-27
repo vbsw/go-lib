@@ -9,27 +9,23 @@ package cmodule
 
 import (
 	"testing"
-	"unsafe"
 )
 
 func TestEnsureBuffer(t *testing.T) {
 	var seq Sequence
-	seq.Modules = []Module{nil, nil, nil}
-	err := seq.ensureBuffer()
+	err := seq.EnsureCap(3)
 	if err != nil {
 		t.Error("error not nil:", err.Error())
 	} else if len(seq.buffer) == 0 {
 		t.Error("buffer length = 0")
 	} else {
-		bufferLenPrev := len(seq.buffer)
-		seq.Modules = append(seq.Modules, nil, nil)
-		seq.buffer = unsafe.Slice(&seq.buffer[0], 5)
-		err = seq.ensureBuffer()
+		bufferPrevLen := len(seq.buffer)
+		err = seq.EnsureCap(5)
 		if err != nil {
 			t.Error("error not nil:", err.Error())
 		} else if len(seq.buffer) == 0 {
 			t.Error("buffer length = 0")
-		} else if bufferLenPrev == len(seq.buffer) {
+		} else if bufferPrevLen == len(seq.buffer) {
 			t.Error("buffer length unchanged")
 		} else {
 			err = seq.Close()
