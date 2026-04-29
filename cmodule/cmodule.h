@@ -8,14 +8,14 @@ extern "C" {
 typedef struct {
 	int64_t err1, err2;
 	char *err_str;
-	uintptr_t *data;
+	void **data;
 	size_t err_idx, length;
 	int32_t passes;
 } cmodule_proc_params_t;
 
-extern void cmodule_alloc(uintptr_t **data, size_t length);
+extern void cmodule_alloc(void ***data, size_t total_length);
 extern void cmodule_proc(cmodule_proc_params_t *params);
-extern void cmodule_free(uintptr_t *data);
+extern void cmodule_free(void **data);
 
 #ifdef __cplusplus
 }

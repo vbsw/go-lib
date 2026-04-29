@@ -43,14 +43,14 @@ type Error struct {
 
 // Sequence is a buffer allocated in C.
 // It holds pointers to functions and data.
-type Sequence []C.uintptr_t
+type Sequence []unsafe.Pointer
 
 // Module provides abstraction to C functions and data.
 type Module interface {
 	// CProcessor returns pointer to a C function and C data.
-	CProcessor(seqenceType SequenceType) (C.uintptr_t, C.uintptr_t)
+	CProcessor(seqenceType SequenceType) (unsafe.Pointer, unsafe.Pointer)
 	CToGoError(moduleErr, systemErr int64, info string) error
-	SetCData(data C.uintptr_t)
+	SetCData(data unsafe.Pointer)
 }
 
 // Len returns the number of modules in the Sequence.
@@ -61,11 +61,11 @@ func (seq Sequence) Len() int {
 // NewSequence returns a new instance of Sequence.
 func NewSequence(length int) Sequence {
 	if length > 0 && uint64(length) <= MaxSequenceLen {
-		var dataC *C.uintptr_t
-		lengthTotal := length * SequenceChunks
-		C.cmodule_alloc(&dataC, C.size_t(lengthTotal))
+		var dataC *unsafe.Pointer
+		totalLength := length * SequenceChunks
+		C.cmodule_alloc(&dataC, C.size_t(totalLength))
 		if dataC != nil {
-			return unsafe.Slice(dataC, lengthTotal)
+			return unsafe.Slice(dataC, totalLength)
 		}
 		return nil
 	}
@@ -112,11 +112,11 @@ func (seq Sequence) Disable(indices ...int) {
 	length := seq.Len()
 	if len(indices) == 0 {
 		for i := 0; i < length; i++ {
-			seq[i], seq[i+length] = 0, 0
+			seq[i], seq[i+length] = nil, nil
 		}
 	} else {
 		for _, index := range indices {
-			seq[index], seq[index+length] = 0, 0
+			seq[index], seq[index+length] = nil, nil
 		}
 	}
 }
@@ -226,10 +226,4 @@ func (errRun *Error) GoError(modules []Module) error {
 		err = errors.New(errStr)
 	}
 	return err
-}
-
-func init4Test(seq Sequence) {
-	for i := range seq {
-		seq[i] = C.uintptr_t(i)
-	}
 }

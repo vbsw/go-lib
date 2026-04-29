@@ -10,14 +10,14 @@
 #include <string.h>
 #include "cmodule.h"
 
-typedef struct {int64_t err1, err2; const char *err_str; uintptr_t *data, *ext; size_t length, index; int32_t pass;} cmodule_params_t;
+typedef struct {int64_t err1, err2; const char *err_str; void **data, **ext; size_t length, index; int32_t pass;} cmodule_params_t;
 typedef void (*cmodule_proc_t)(cmodule_params_t *params);
 
-void cmodule_alloc(uintptr_t **const data, const size_t length) {
-	const size_t size = length*sizeof(void*);
+void cmodule_alloc(void ***const data, const size_t total_length) {
+	const size_t size = total_length*sizeof(void*);
 	void *const data_new = malloc(size);
 	memset(data_new, 0, size);
-	*data = (uintptr_t*)data_new;
+	*data = (void**)data_new;
 }
 
 void cmodule_proc(cmodule_proc_params_t *const proc_params) {
@@ -56,6 +56,6 @@ void cmodule_proc(cmodule_proc_params_t *const proc_params) {
 	}
 }
 
-void cmodule_free(uintptr_t *const data) {
+void cmodule_free(void **const data) {
 	free((void*)data);
 }
