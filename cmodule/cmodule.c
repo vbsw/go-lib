@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include "cmodule.h"
 
 typedef struct {int64_t err1, err2; const char *err_str; void **data, **ext; size_t length, index; int32_t pass;} cmodule_params_t;
@@ -34,12 +34,15 @@ void cmodule_proc(cmodule_proc_params_t *const proc_params) {
 		}
 		// backwards
 		if (!params.err1 && ++params.pass < proc_params->passes) {
-			for (params.index = proc_params->length - 1; !params.err1; params.index--) {
+			params.index = proc_params->length - 1;
+			while (!params.err1) {
 				if (proc_params->data[params.index]) {
 					proc_params->err_idx = params.index;
 					((cmodule_proc_t)proc_params->data[params.index])(&params);
 				}
-				if (params.index == 0)
+				if (params.index > 0)
+					params.index--;
+				else
 					break;
 			}
 		}
@@ -50,12 +53,19 @@ void cmodule_proc(cmodule_proc_params_t *const proc_params) {
 	}
 	// error handling
 	if (params.err1) {
-		params.pass = -(params.pass + 1);
-		for (params.index = proc_params->length - 1; params.index >= 0; params.index--) {
+		params.pass = -(params.pass + 1), params.index = proc_params->length - 1;
+		while (true) {
 			if (proc_params->data[params.index]) {
 				((cmodule_proc_t)proc_params->data[params.index])(&params);
 			}
+			if (params.index > 0)
+				params.index--;
+			else
+				break;
 		}
+		proc_params->err1 = params.err1;
+		proc_params->err2 = params.err2;
+		proc_params->err_str = params.err_str;
 	}
 }
 

@@ -7,7 +7,7 @@ extern "C" {
 
 typedef struct {
 	int64_t err1, err2;
-	char *err_str;
+	const char *err_str;
 	void **data;
 	size_t err_idx, length;
 	int32_t passes;
