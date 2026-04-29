@@ -26,14 +26,14 @@ const (
 const (
 	maxInt         = int((^uint(0)) >> 1)
 	maxInt32       = int32((^uint32(0)) >> 1)
-	sequenceChunks = 4
-	MaxSequenceLen = min(uint64(C.SIZE_MAX)/sequenceChunks, uint64(maxInt/sequenceChunks))
+	SequenceChunks = 4
+	MaxSequenceLen = min(uint64(C.SIZE_MAX)/SequenceChunks, uint64(maxInt/SequenceChunks))
 )
 
 // SequenceType represents processing type.
 type SequenceType int
 
-// Error is returned by function Process.
+// Error is returned by Process.
 type Error struct {
 	ModuleErr int64
 	SystemErr int64
@@ -49,20 +49,20 @@ type Sequence []C.uintptr_t
 type Module interface {
 	// CProcessor returns pointer to a C function and C data.
 	CProcessor(seqenceType SequenceType) (C.uintptr_t, C.uintptr_t)
-	CToError(moduleErr, systemErr int64, info string) error
+	CToGoError(moduleErr, systemErr int64, info string) error
 	SetCData(data C.uintptr_t)
 }
 
 // Len returns the number of modules in the Sequence.
 func (seq Sequence) Len() int {
-	return len(seq) / sequenceChunks
+	return len(seq) / SequenceChunks
 }
 
 // NewSequence returns a new instance of Sequence.
 func NewSequence(length int) Sequence {
 	if length > 0 && uint64(length) <= MaxSequenceLen {
 		var dataC *C.uintptr_t
-		lengthTotal := length * sequenceChunks
+		lengthTotal := length * SequenceChunks
 		C.cmodule_alloc(&dataC, C.size_t(lengthTotal))
 		if dataC != nil {
 			return unsafe.Slice(dataC, lengthTotal)
@@ -72,7 +72,7 @@ func NewSequence(length int) Sequence {
 	panic("sequence length unsupported")
 }
 
-// Set sets functions and data for Process. Affects all if no indices given.
+// Set sets functions and data for Process. Applies to all when indices empty.
 func (seq Sequence) Set(seqenceType SequenceType, modules []Module, indices ...int) {
 	length := seq.Len()
 	if len(indices) == 0 {
@@ -86,7 +86,28 @@ func (seq Sequence) Set(seqenceType SequenceType, modules []Module, indices ...i
 	}
 }
 
-// Disable sets functions to be skipped in Process. Affects all if no indices given.
+// Remove removes elements from Sequence. Indices must be in ascending order
+// and must not remove everything.
+func (seq Sequence) Remove(indices ...int) Sequence {
+	if len(indices) > 0 {
+		length := seq.Len()
+		if length > len(indices) {
+			delta, i1, i2 := seq.remove(0, 0, 0, 0, indices)
+			delta, i1, i2 = seq.remove(delta, i1, i2, length, indices)
+			delta, i1, i2 = seq.remove(delta, i1, i2, length*2, indices)
+			delta, i1, i2 = seq.remove(delta, i1, i2, length*3, indices)
+			if i2 < len(seq) {
+				copy(seq[i1-delta:], seq[i2:])
+			}
+			seq = seq[:len(seq)-len(indices)*SequenceChunks]
+		} else {
+			panic("wrong indices length")
+		}
+	}
+	return seq
+}
+
+// Disable sets functions to be skipped in Process. Applies to all when indices empty.
 func (seq Sequence) Disable(indices ...int) {
 	length := seq.Len()
 	if len(indices) == 0 {
@@ -122,9 +143,39 @@ func (seq Sequence) Process(passes int) *Error {
 			}
 			return nil
 		}
-		panic("passes number unsupported")
+		panic("passes count unsupported")
 	}
 	return nil
+}
+
+// ProcessInit is abbreviation for Set(Init), Process(passes)
+// and GoError(modules)
+func (seq Sequence) ProcessInit(modules []Module, passes int) error {
+	length := seq.Len()
+	for i := 0; i < length && i < len(modules); i++ {
+		seq[i], seq[i+length] = modules[i].CProcessor(Init)
+	}
+	return seq.Process(passes).GoError(modules)
+}
+
+// ProcessRun is abbreviation for Set(Run), Process(passes)
+// and GoError(modules)
+func (seq Sequence) ProcessRun(modules []Module, passes int) error {
+	length := seq.Len()
+	for i := 0; i < length && i < len(modules); i++ {
+		seq[i], seq[i+length] = modules[i].CProcessor(Run)
+	}
+	return seq.Process(passes).GoError(modules)
+}
+
+// ProcessDestroy is abbreviation for Set(Destroy), Process(passes)
+// and GoError(modules)
+func (seq Sequence) ProcessDestroy(modules []Module, passes int) error {
+	length := seq.Len()
+	for i := 0; i < length && i < len(modules); i++ {
+		seq[i], seq[i+length] = modules[i].CProcessor(Destroy)
+	}
+	return seq.Process(passes).GoError(modules)
 }
 
 // Release releases C memory. Returns always nil.
@@ -135,8 +186,27 @@ func (seq Sequence) Release() Sequence {
 	return nil
 }
 
-func (errRun *Error) ToError(modules []Module) error {
-	err := modules[errRun.Index].CToError(errRun.ModuleErr, errRun.SystemErr, errRun.Info)
+func (seq Sequence) remove(delta, i1, i2, offset int, indices []int) (int, int, int) {
+	for _, index := range indices {
+		offIdx := offset + index
+		if i1 == i2 {
+			i1, i2 = offIdx, offIdx+1
+		} else if i2 == offIdx {
+			i2++
+		} else if i2 < offIdx {
+			copy(seq[i1-delta:], seq[i2:offIdx])
+			delta += (i2 - i1)
+			i1, i2 = offIdx, offIdx+1
+		} else {
+			panic("wrong indices order")
+		}
+	}
+	return delta, i1, i2
+}
+
+// GoError converts cmodule's Error to Go error and returns it.
+func (errRun *Error) GoError(modules []Module) error {
+	err := modules[errRun.Index].CToGoError(errRun.ModuleErr, errRun.SystemErr, errRun.Info)
 	if err == nil {
 		var errStr string
 		if errRun.ModuleErr < 1000000 {
@@ -156,4 +226,10 @@ func (errRun *Error) ToError(modules []Module) error {
 		err = errors.New(errStr)
 	}
 	return err
+}
+
+func init4Test(seq Sequence) {
+	for i := range seq {
+		seq[i] = C.uintptr_t(i)
+	}
 }

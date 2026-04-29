@@ -13,14 +13,14 @@
 typedef struct {int64_t err1, err2; const char *err_str; uintptr_t *data, *ext; size_t length, index; int32_t pass;} cmodule_params_t;
 typedef void (*cmodule_proc_t)(cmodule_params_t *params);
 
-void vbsw_cmodule_alloc(uintptr_t **const data, const size_t length) {
+void cmodule_alloc(uintptr_t **const data, const size_t length) {
 	const size_t size = length*sizeof(void*);
 	void *const data_new = malloc(size);
 	memset(data_new, 0, size);
 	*data = (uintptr_t*)data_new;
 }
 
-void vbsw_cmodule_proc(cmodule_proc_params_t *const proc_params) {
+void cmodule_proc(cmodule_proc_params_t *const proc_params) {
 	cmodule_params_t params = {0, 0, 0, &proc_params->data[proc_params->length], &proc_params->data[proc_params->length*2], proc_params->length, 0, 0};
 	// main
 	while (params.pass < proc_params->passes) {
