@@ -24,174 +24,134 @@ const (
 )
 
 const (
-	maxInt   = int((^uint(0)) >> 1)
+	maxInt         = int((^uint(0)) >> 1)
+	maxInt32       = int32((^uint32(0)) >> 1)
+	sequenceChunks = 4
+	MaxSequenceLen = min(uint64(C.SIZE_MAX)/sequenceChunks, uint64(maxInt/sequenceChunks))
 )
 
-var (
-	ErrBufferOutOfMemory   = errors.New("C buffer out of memory")
-	ErrMaxModulesExceeded  = errors.New("maximum modules count exceeded")
-	ErrDataModulesMismatch = errors.New("mismatch of data length and modules count")
-)
-
+// SequenceType represents processing type.
 type SequenceType int
 
-type Sequence struct {
-	Err        error
-	modules    []Module
-	buffer     []unsafe.Pointer
-	syncLen    int
-	bufferSize int
+// Error is returned by function Process.
+type Error struct {
+	ModuleErr int64
+	SystemErr int64
+	Info      string
+	Index     int
 }
 
+// Sequence is a buffer allocated in C.
+// It holds pointers to functions and data.
+type Sequence []C.uintptr_t
+
+// Module provides abstraction to C functions and data.
 type Module interface {
-	CProcessor(seqenceType SequenceType) (unsafe.Pointer, unsafe.Pointer)
-	CToError(modErrId, sysErrId int64, errInfo string) error
-	SetCData(data unsafe.Pointer)
+	// CProcessor returns pointer to a C function and C data.
+	CProcessor(seqenceType SequenceType) (C.uintptr_t, C.uintptr_t)
+	CToError(moduleErr, systemErr int64, info string) error
+	SetCData(data C.uintptr_t)
 }
 
-// Len returns current number of modules in Sequence.
-func (seq *Sequence) Len() int {
-	return len(seq.modules)
+// Len returns the number of modules in the Sequence.
+func (seq Sequence) Len() int {
+	return len(seq) / sequenceChunks
 }
 
-// Cap returns possible number of modules in Sequence before reallocating.
-func (seq *Sequence) Cap() int {
-	return len(seq.buffer) / 2
-}
-
-// BufferSize returns C buffer size in bytes that's allocated by Sequence.
-func (seq *Sequence) BufferSize() int {
-	return seq.bufferSize
-}
-
-// EnsureCap preallocates memory where capacity is the number of modules
-// that can be used before reallocating.
-// Error is stored in Err.
-func (seq *Sequence) EnsureCap(capacity int) error {
-	if seq.Err == nil {
-		if seq.Cap() < capacity {
-			if int64(maxInt) >= (int64(capacity)+2)*2 {
-				seq.initBuffer(capacity)
-			} else {
-				seq.Err = ErrMaxModulesExceeded
-			}
+// NewSequence returns a new instance of Sequence.
+func NewSequence(length int) Sequence {
+	if length > 0 && uint64(length) <= MaxSequenceLen {
+		var dataC *C.uintptr_t
+		lengthTotal := length * sequenceChunks
+		C.cmodule_alloc(&dataC, C.size_t(lengthTotal))
+		if dataC != nil {
+			return unsafe.Slice(dataC, lengthTotal)
 		}
+		return nil
 	}
-	return seq.Err
+	panic("sequence length unsupported")
 }
 
-// Add adds a module to Sequence.
-// Error is stored in Err.
-func (seq *Sequence) Add(module Module) error {
-	if seq.Err == nil {
-		if int64(maxInt) >= (int64(len(seq.modules))+2)*2 {
-			seq.modules = append(seq.modules, module)
-		} else {
-			seq.Err = ErrMaxModulesExceeded
+// Set sets functions and data for Process. Affects all if no indices given.
+func (seq Sequence) Set(seqenceType SequenceType, modules []Module, indices ...int) {
+	length := seq.Len()
+	if len(indices) == 0 {
+		for i := 0; i < length && i < len(modules); i++ {
+			seq[i], seq[i+length] = modules[i].CProcessor(seqenceType)
 		}
-	}
-	return seq.Err
-}
-
-// Set prepares C functions and C data to be ran.
-// Error is stored in Err.
-func (seq *Sequence) Set(seqenceType SequenceType) error {
-	if seq.Err == nil {
-		if seq.Cap() < len(seq.modules) {
-			seq.initBuffer(len(seq.modules))
-		}
-		if seq.Err == nil {
-			for i, mod := range seq.modules {
-				seq.buffer[i], seq.buffer[i+len(seq.modules)] = mod.CProcessor(seqenceType)
-			}
-		}
-	}
-	return seq.Err
-}
-
-// Run processes data in C.
-// Error is stored in Err.
-func (seq *Sequence) Run(passes int) error {
-	if seq.Err == nil {
-		var errIdx C.int32_t
-		var err1C, err2C C.int64_t
-		var errStrC *C.char
-		lenC, sizeC, passesC := C.int32_t(len(seq.buffer)), C.int32_t(seq.bufferSize), C.int32_t(passes)
-		C.vbsw_cmodule_proc(&seq.buffer[0], lenC, &sizeC, passesC, &errIdx, &err1C, &err2C, &errStrC)
-		seq.bufferSize = int(sizeC)
-		if err1C != 0 {
-			seq.Err = seq.toError(int(errIdx), int64(err1C), int64(err2C), errStrC)
-		}
-	}
-	return seq.Err
-}
-
-// SyncData writes C data to modules.
-// Error is stored in Err.
-func (seq *Sequence) SyncData() error {
-	if seq.Err == nil {
-		if seq.syncLen == len(seq.modules) {
-			for i, mod := range seq.modules {
-				mod.SetCData(seq.buffer[i+len(seq.modules)])
-			}
-		} else {
-			seq.Err = ErrDataModulesMismatch
-		}
-	}
-	return seq.Err
-}
-
-func (seq *Sequence) initBuffer(modulesLen int) {
-	var bufferC *unsafe.Pointer
-	lenC, sizeC := C.int32_t(len(seq.buffer)), C.int32_t(seq.bufferSize)
-	if lenC > 0 {
-		bufferC = &seq.buffer[0]
-	}
-	C.vbsw_cmodule_alloc_buffer(&bufferC, &lenC, &sizeC, C.int32_t(modulesLen))
-	if sizeC > 0 {
-		seq.buffer = unsafe.Slice(bufferC, int(lenC))
-		seq.bufferSize = int(sizeC)
-		seq.syncLen = modulesLen
 	} else {
-		seq.Err = ErrBufferOutOfMemory
-	}
-}
-
-// Close releases modules and C memory.
-func (seq *Sequence) Close() error {
-	if seq.Err == nil {
-		if len(seq.buffer) > 0 {
-			C.vbsw_cmodule_free(&seq.buffer[0], C.int32_t(len(seq.buffer)))
-			seq.modules = nil
-			seq.buffer = nil
-			seq.syncLen = 0
-			seq.bufferSize = 0
+		for _, index := range indices {
+			seq[index], seq[index+length] = modules[index].CProcessor(seqenceType)
 		}
 	}
-	return seq.Err
 }
 
-func (seq *Sequence) toError(errIdx int, modErrId, sysErrId int64, errStrC *C.char) error {
-	var errInfo string
-	if errStrC != nil {
-		errInfo = C.GoString(errStrC)
+// Disable sets functions to be skipped in Process. Affects all if no indices given.
+func (seq Sequence) Disable(indices ...int) {
+	length := seq.Len()
+	if len(indices) == 0 {
+		for i := 0; i < length; i++ {
+			seq[i], seq[i+length] = 0, 0
+		}
+	} else {
+		for _, index := range indices {
+			seq[index], seq[index+length] = 0, 0
+		}
 	}
-	err := seq.modules[errIdx].CToError(modErrId, sysErrId, errInfo)
+}
+
+// Process processes C data in batch.
+func (seq Sequence) Process(passes int) *Error {
+	length := seq.Len()
+	if passes > 0 && length > 0 {
+		if uint64(passes) <= uint64(maxInt32) {
+			var params C.cmodule_proc_params_t
+			params.data = &seq[0]
+			params.length = C.size_t(length)
+			params.passes = C.int32_t(passes)
+			C.cmodule_proc(&params)
+			if params.err1 != 0 {
+				err := new(Error)
+				err.ModuleErr = int64(params.err1)
+				err.SystemErr = int64(params.err2)
+				err.Index = int(params.err_idx)
+				if params.err_str != nil {
+					err.Info = C.GoString(params.err_str)
+				}
+				return err
+			}
+			return nil
+		}
+		panic("passes number unsupported")
+	}
+	return nil
+}
+
+// Release releases C memory. Returns always nil.
+func (seq Sequence) Release() Sequence {
+	if len(seq) > 0 {
+		C.cmodule_free(&seq[0])
+	}
+	return nil
+}
+
+func (errRun *Error) ToError(modules []Module) error {
+	err := modules[errRun.Index].CToError(errRun.ModuleErr, errRun.SystemErr, errRun.Info)
 	if err == nil {
 		var errStr string
-		if modErrId < 1000000 {
+		if errRun.ModuleErr < 1000000 {
 			errStr = "out of memory"
 		} else {
 			errStr = "unknown"
 		}
-		errStr = errStr + " (" + strconv.FormatInt(modErrId, 10)
-		if sysErrId == 0 {
+		errStr = errStr + " (" + strconv.FormatInt(errRun.ModuleErr, 10)
+		if errRun.SystemErr == 0 {
 			errStr = errStr + ")"
 		} else {
-			errStr = errStr + ", " + strconv.FormatInt(sysErrId, 10) + ")"
+			errStr = errStr + ", " + strconv.FormatInt(errRun.SystemErr, 10) + ")"
 		}
-		if len(errInfo) > 0 {
-			errStr = errStr + "; " + errInfo
+		if len(errRun.Info) > 0 {
+			errStr = errStr + "; " + errRun.Info
 		}
 		err = errors.New(errStr)
 	}
