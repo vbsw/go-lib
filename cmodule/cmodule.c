@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "cmodule.h"
 
 typedef struct {int64_t err1, err2; const char *err_str; void **data, **ext; size_t length, index; int32_t pass;} cmodule_params_t;
@@ -33,11 +34,13 @@ void cmodule_proc(cmodule_proc_params_t *const proc_params) {
 		}
 		// backwards
 		if (!params.err1 && ++params.pass < proc_params->passes) {
-			for (params.index = proc_params->length - 1; params.index >= 0 && !params.err1; params.index--) {
+			for (params.index = proc_params->length - 1; !params.err1; params.index--) {
 				if (proc_params->data[params.index]) {
 					proc_params->err_idx = params.index;
 					((cmodule_proc_t)proc_params->data[params.index])(&params);
 				}
+				if (params.index == 0)
+					break;
 			}
 		}
 		if (!params.err1)
