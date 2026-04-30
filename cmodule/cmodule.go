@@ -173,8 +173,8 @@ func (seq Sequence) Release() Sequence {
 	return nil
 }
 
-// Remove removes elements from Sequence. Indices must be in ascending order
-// and must not remove everything.
+// Remove removes elements from Sequence. Indices must be in ascending order,
+// in interval [0,seq.Len()) and must not remove everything.
 func (seq Sequence) Remove(indices ...int) Sequence {
 	if len(indices) > 0 {
 		length := seq.Len()
