@@ -179,10 +179,10 @@ func (seq Sequence) Remove(indices ...int) Sequence {
 	if len(indices) > 0 {
 		length := seq.Len()
 		if length > len(indices) {
-			delta, i1, i2 := seq.remove(0, 0, 0, 0, indices)
-			delta, i1, i2 = seq.remove(delta, i1, i2, length, indices)
-			delta, i1, i2 = seq.remove(delta, i1, i2, length*2, indices)
-			delta, i1, i2 = seq.remove(delta, i1, i2, length*3, indices)
+			var delta, i1, i2 int
+			for i := 0; i < SequenceChunks; i++ {
+				delta, i1, i2 = seq.remove(delta, i1, i2, length*i, indices)
+			}
 			if i2 < len(seq) {
 				copy(seq[i1-delta:], seq[i2:])
 			}

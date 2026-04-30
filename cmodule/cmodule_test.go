@@ -104,6 +104,30 @@ func TestRemove3(t *testing.T) {
 	}
 }
 
+func TestRemove03(t *testing.T) {
+	seq, _ := newTestData(4)
+	seq = seq.Remove(0, 3)
+	if len(seq) == 0 {
+		t.Error("length is 0")
+	} else if len(seq) != 2*SequenceChunks {
+		t.Error("wrong total length:", len(seq))
+	} else if seq.Len() != 2 {
+		t.Error("wrong length:", seq.Len())
+	} else if *(*int)(seq[1]) != 2 {
+		t.Error("wrong function pointer:", *(*int)(seq[1]))
+	} else if *(*int)(seq[3]) != 6 {
+		t.Error("wrong data pointer:", *(*int)(seq[3]))
+	} else if *(*int)(seq[5]) != 10 {
+		t.Error("wrong extra1:", *(*int)(seq[5]))
+	} else if *(*int)(seq[6]) != 13 {
+		t.Error("wrong extra2:", *(*int)(seq[6]))
+	} else if *(*int)(seq[7]) != 14 {
+		t.Error("wrong extra2:", *(*int)(seq[7]))
+	} else {
+		seq = seq.Release()
+	}
+}
+
 func TestRemove13(t *testing.T) {
 	seq, _ := newTestData(4)
 	seq = seq.Remove(1, 3)
