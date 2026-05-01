@@ -120,7 +120,7 @@ func WildcardMatch(s, pattern string) bool {
 // The evaluation is controlled by the provided operator:
 //   - And: returns true if all substrings are contained in string s.
 //   - Or:  returns true if at least one of the substrings is contained in string s.
-//   - Xor: returns true if exclusivily one of the substrings is contained in string s.
+//   - Xor: returns true if exclusively one of the substrings is contained in string s.
 func Contains[D ~string | ~[]byte, S ~[]string | ~[][]byte](s D, substrings S, op Operator) bool {
 	switch data := any(s).(type) {
 	case []byte:
