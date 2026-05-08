@@ -474,3 +474,23 @@ func TestIncomplete3(t *testing.T) {
 		}
 	}
 }
+
+func TestReset(t *testing.T) {
+	var parser ByteParser
+	line := []byte("aaa bbbb#ccc ddd|eee fff\r\ngg#g\r")
+	success := parser.Next(line)
+	if success != true {
+		t.Error("wrong success:", success)
+	} else if parser.KeyLen != 3 || parser.ValLen != 4 || parser.LineLen != 24 {
+		t.Error("wrong length:", parser.KeyLen, parser.ValLen, parser.LineLen)
+	} else if parser.LineNumber != 1 {
+		t.Error("wrong line number:", parser.LineNumber)
+	} else {
+		parser.Reset(0)
+		if parser.LineNumber != 1 {
+			t.Error("wrong line number:", parser.LineNumber)
+		} else if parser.KeyLen != 0 || parser.ValLen != 0 || parser.LineLen != 0 {
+			t.Error("wrong length:", parser.KeyLen, parser.ValLen, parser.LineLen)
+		}
+	}
+}
