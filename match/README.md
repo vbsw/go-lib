@@ -18,9 +18,9 @@ run tests
 
 	go test
 
-run benchmarks
+run benchmarks (use -benchtime=1x, otherwise wrong result)
 
-	go test -bench=.
+	go test -bench=. -benchtime=1x
 
 ## References
 - https://go.dev/doc/install
