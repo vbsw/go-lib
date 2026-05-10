@@ -5,12 +5,9 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-//go:build windows
-
 package fs
 
 import (
-	"os"
 	"syscall"
 )
 
