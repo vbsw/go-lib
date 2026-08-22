@@ -1,0 +1,81 @@
+/*
+ *          Copyright 2026, Vitali Baumtrok.
+ * Distributed under the Boost Software License, Version 1.0.
+ *     (See accompanying file LICENSE or copy at
+ *        http://www.boost.org/LICENSE_1_0.txt)
+ */
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
+#include "cbatch.h"
+
+typedef struct {
+	int64_t err1, err2;
+	const char *err_str;
+	void **data, **ext;
+	size_t length, index;
+	int32_t pass;
+} cbatch_params_t;
+
+typedef void (*cbatch_proc_t)(cbatch_params_t *params);
+
+void cbatch_alloc(void ***const data, const size_t total_length) {
+	const size_t size = total_length*sizeof(void*);
+	void *const data_new = malloc(size);
+	memset(data_new, 0, size);
+	*data = (void**)data_new;
+}
+
+void cbatch_proc(cbatch_proc_params_t *const proc_params) {
+	cbatch_params_t params = {0, 0, NULL, &proc_params->data[proc_params->length], &proc_params->data[proc_params->length*2], proc_params->length, 0, 0};
+	// main
+	while (params.pass < proc_params->passes) {
+		// forward
+		for (params.index = 0; params.index < proc_params->length && !params.err1; params.index++) {
+			if (proc_params->data[params.index]) {
+				proc_params->err_idx = params.index;
+				((cbatch_proc_t)proc_params->data[params.index])(&params);
+			}
+		}
+		// backwards
+		if (!params.err1 && ++params.pass < proc_params->passes) {
+			params.index = proc_params->length - 1;
+			while (!params.err1) {
+				if (proc_params->data[params.index]) {
+					proc_params->err_idx = params.index;
+					((cbatch_proc_t)proc_params->data[params.index])(&params);
+				}
+				if (params.index > 0)
+					params.index--;
+				else
+					break;
+			}
+		}
+		if (!params.err1)
+			params.pass++;
+		else
+			break;
+	}
+	// error handling
+	if (params.err1) {
+		params.pass = -(params.pass + 1), params.index = proc_params->length - 1;
+		while (true) {
+			if (proc_params->data[params.index]) {
+				((cbatch_proc_t)proc_params->data[params.index])(&params);
+			}
+			if (params.index > 0)
+				params.index--;
+			else
+				break;
+		}
+		proc_params->err1 = params.err1;
+		proc_params->err2 = params.err2;
+		proc_params->err_str = params.err_str;
+	}
+}
+
+void cbatch_free(void **const data) {
+	free((void*)data);
+}
