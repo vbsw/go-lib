@@ -1,6 +1,6 @@
 # match
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/match.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/match) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/match)](https://goreportcard.com/report/github.com/vbsw/go-lib/match)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/match.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/match)
 
 ## About
 Package match provides simple wildcard and substring checks. Package match is published on <https://github.com/vbsw/go-lib>.

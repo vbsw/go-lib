@@ -1,6 +1,6 @@
 # cmodule
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cmodule.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cmodule) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/cmodule)](https://goreportcard.com/report/github.com/vbsw/go-lib/cmodule)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cmodule.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cmodule)
 
 ## About
 Package cmodule provides C batch processing. It is published on <https://github.com/vbsw/go-lib>.

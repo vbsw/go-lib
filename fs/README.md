@@ -1,6 +1,6 @@
 # fs
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/fs.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/fs) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/fs)](https://goreportcard.com/report/github.com/vbsw/go-lib/fs)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/fs.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/fs)
 
 ## About
 Package fs provides various file functions. Package fs is published on <https://github.com/vbsw/go-lib>.

@@ -1,6 +1,6 @@
 # cl
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cl.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cl) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/cl)](https://goreportcard.com/report/github.com/vbsw/go-lib/cl)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/cl.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/cl)
 
 ## About
 Package cl parses command line arguments. It is published on <https://github.com/vbsw/go-lib>.

@@ -1,6 +1,6 @@
 # tabformat
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/tabformat.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/tabformat) [![Go Report Card](https://goreportcard.com/badge/github.com/vbsw/go-lib/tabformat)](https://goreportcard.com/report/github.com/vbsw/go-lib/tabformat)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vbsw/go-lib/tabformat.svg)](https://pkg.go.dev/github.com/vbsw/go-lib/tabformat)
 
 ## About
 Package tabformat provides a parser for a simple, tab-indented data format. The format represents hierarchical structures using leading tab characters. Package tabformat is published on <https://github.com/vbsw/go-lib>.
