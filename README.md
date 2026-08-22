@@ -3,6 +3,7 @@
 ## About
 go-lib is a collection of Go functions. It is published on <https://github.com/vbsw/go-lib>.
 
+**cbatch** - C batch processing  
 **cl** - command line arguments parser  
 **fs** - various file functions  
 **match** - simple wildcard and substring checks  
