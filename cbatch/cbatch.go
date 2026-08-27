@@ -8,6 +8,7 @@
 // Package cbatch provides C batch processing.
 package cbatch
 
+// #include <limits.h>
 // #include <stdint.h>
 // #include "cbatch.h"
 import "C"
@@ -26,7 +27,7 @@ const (
 	maxInt         = int((^uint(0)) >> 1)
 	maxInt32       = int32((^uint32(0)) >> 1)
 	SequenceChunks = 4
-	MaxSequenceLen = min(uint64(C.SIZE_MAX)/SequenceChunks, uint64(maxInt/SequenceChunks))
+	MaxSequenceLen = (min(min(uint64(C.LONG_MAX), uint64(C.SIZE_MAX)), uint64(maxInt)) / SequenceChunks) / uint64(unsafe.Sizeof(unsafe.Pointer(nil)))
 )
 
 // Step represents a step in a task.
@@ -34,10 +35,11 @@ type Step int
 
 // Error is returned by Run.
 type Error struct {
-	Num1  int64
-	Num2  int64
-	Str   string
-	Index int
+	Str      string
+	TaskName string
+	Num1     int
+	Num2     int
+	Index    int
 }
 
 // Sequence holds pointers to functions and data
@@ -46,10 +48,10 @@ type Sequence []unsafe.Pointer
 
 // Task provides abstraction to C functions and its data.
 type Task interface {
-	// CData returns pointer to C function and C data.
-	CData(step Step) (unsafe.Pointer, unsafe.Pointer)
-	AsError(num1, num2 int64, str string) error
-	SetCData(data unsafe.Pointer)
+	// CData returns pointer to C function and C data1, data2.
+	CData(step Step) (unsafe.Pointer, unsafe.Pointer, unsafe.Pointer)
+	AsError(num1, num2 int, str string) error
+	SetCData(data1, data2 unsafe.Pointer)
 }
 
 // NewSequence returns a new instance of Sequence.
@@ -58,13 +60,13 @@ func NewSequence(length int) Sequence {
 	if length > 0 && uint64(length) <= MaxSequenceLen {
 		var dataC *unsafe.Pointer
 		totalLength := length * SequenceChunks
-		C.cbatch_alloc(&dataC, C.size_t(totalLength))
+		C.aca_batch_alloc(&dataC, C.int_fast32_t(totalLength))
 		if dataC != nil {
 			return unsafe.Slice(dataC, totalLength)
 		}
 		return nil
 	}
-	panic("sequence length unsupported")
+	panic("sequence length not supported")
 }
 
 // Remove removes elements from tasks array and returns it.
@@ -99,11 +101,11 @@ func (seq Sequence) Disable(indices ...int) {
 	length := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			seq[index], seq[index+length] = nil, nil
+			seq[index], seq[length+index], seq[length*2+index] = nil, nil, nil
 		}
 	} else {
 		for i := 0; i < length; i++ {
-			seq[i], seq[i+length] = nil, nil
+			seq[i], seq[length+i], seq[length*2+i] = nil, nil, nil
 		}
 	}
 }
@@ -118,24 +120,26 @@ func (seq Sequence) Run(passes int) *Error {
 	length := seq.Len()
 	if passes > 0 && length > 0 {
 		if uint64(passes) <= uint64(maxInt32) {
-			var params C.cbatch_proc_params_t
-			params.data = &seq[0]
-			params.length = C.size_t(length)
-			params.passes = C.int32_t(passes)
-			C.cbatch_proc(&params)
-			if params.err1 != 0 {
+			var err1, err2, err_idx C.int_fast32_t
+			var err_str *C.char
+			C.aca_batch_run(&seq[0], &err1, &err2, &err_idx, &err_str, C.int_fast32_t(length), C.int_fast32_t(passes))
+			if err1 != 0 {
 				err := new(Error)
-				err.Num1 = int64(params.err1)
-				err.Num2 = int64(params.err2)
-				err.Index = int(params.err_idx)
-				if params.err_str != nil {
-					err.Str = C.GoString(params.err_str)
+				taskNameC := seq[length*3+err.Index]
+				err.Index = int(err_idx)
+				err.Num1 = int(err1)
+				err.Num2 = int(err2)
+				if err_str != nil {
+					err.Str = C.GoString(err_str)
+				}
+				if taskNameC != nil {
+					err.TaskName = C.GoString((*C.char)(taskNameC))
 				}
 				return err
 			}
 			return nil
 		}
-		panic("passes count unsupported")
+		panic("passes count not supported")
 	}
 	return nil
 }
@@ -145,12 +149,12 @@ func (seq Sequence) Run(passes int) *Error {
 func (seq Sequence) RunInit(tasks []Task, passes int) error {
 	length := seq.Len()
 	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[i+length] = tasks[i].CData(Init)
+		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Init)
 	}
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[i+length])
+			tasks[i].SetCData(seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -162,12 +166,12 @@ func (seq Sequence) RunInit(tasks []Task, passes int) error {
 func (seq Sequence) RunProcess(tasks []Task, passes int) error {
 	length := seq.Len()
 	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[i+length] = tasks[i].CData(Process)
+		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Process)
 	}
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[i+length])
+			tasks[i].SetCData(seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -179,12 +183,12 @@ func (seq Sequence) RunProcess(tasks []Task, passes int) error {
 func (seq Sequence) RunDestroy(tasks []Task, passes int) error {
 	length := seq.Len()
 	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[i+length] = tasks[i].CData(Destroy)
+		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Destroy)
 	}
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[i+length])
+			tasks[i].SetCData(seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -194,7 +198,7 @@ func (seq Sequence) RunDestroy(tasks []Task, passes int) error {
 // Release releases C memory. Returns always nil.
 func (seq Sequence) Release() Sequence {
 	if len(seq) > 0 {
-		C.cbatch_free(&seq[0])
+		C.aca_batch_free(&seq[0])
 	}
 	return nil
 }
@@ -241,11 +245,11 @@ func (seq Sequence) Setup(step Step, tasks []Task, indices ...int) {
 	length := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			seq[index], seq[index+length] = tasks[index].CData(step)
+			seq[index], seq[length+index], seq[length*2+index] = tasks[index].CData(step)
 		}
 	} else {
 		for i := 0; i < length && i < len(tasks); i++ {
-			seq[i], seq[i+length] = tasks[i].CData(step)
+			seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(step)
 		}
 	}
 }
@@ -255,11 +259,11 @@ func (seq Sequence) Sync(tasks []Task, indices ...int) {
 	length := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			tasks[index].SetCData(seq[index+length])
+			tasks[index].SetCData(seq[length+index], seq[length*2+index])
 		}
 	} else {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[i+length])
+			tasks[i].SetCData(seq[length+i], seq[length*2+i])
 		}
 	}
 }
@@ -280,11 +284,11 @@ func (batchErr *Error) Error() string {
 	} else {
 		str = "unknown"
 	}
-	str = str + " (" + strconv.FormatInt(batchErr.Num1, 10)
+	str = str + " (" + strconv.FormatInt(int64(batchErr.Num1), 10)
 	if batchErr.Num2 == 0 {
 		str = str + ")"
 	} else {
-		str = str + ", " + strconv.FormatInt(batchErr.Num2, 10) + ")"
+		str = str + ", " + strconv.FormatInt(int64(batchErr.Num2), 10) + ")"
 	}
 	if len(batchErr.Str) > 0 {
 		str = str + "; " + batchErr.Str

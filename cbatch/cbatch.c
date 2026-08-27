@@ -12,40 +12,38 @@
 #include "cbatch.h"
 
 typedef struct {
-	int64_t err1, err2;
-	const char *err_str;
-	void **data, **ext;
-	size_t length, index;
-	int32_t pass;
-} cbatch_params_t;
+	void **data1, **data2;
+	const char **names, *err_str;
+	int_fast32_t err1, err2, length, index, pass;
+} batch_task_params_t;
 
-typedef void (*cbatch_proc_t)(cbatch_params_t *params);
+typedef void (*batch_task_func_t)(batch_task_params_t *params);
 
-void cbatch_alloc(void ***const data, const size_t total_length) {
-	const size_t size = total_length*sizeof(void*);
+void aca_batch_alloc(void ***const data, const int_fast32_t total_len) {
+	const size_t size = (size_t)total_len*sizeof(void*);
 	void *const data_new = malloc(size);
 	memset(data_new, 0, size);
 	*data = (void**)data_new;
 }
 
-void cbatch_proc(cbatch_proc_params_t *const proc_params) {
-	cbatch_params_t params = {0, 0, NULL, &proc_params->data[proc_params->length], &proc_params->data[proc_params->length*2], proc_params->length, 0, 0};
+void aca_batch_run(void **const data, int_fast32_t *const err1, int_fast32_t *const err2, int_fast32_t *const err_idx, char **const err_str, const int_fast32_t len, const int_fast32_t passes) {
+	batch_task_params_t params = {&data[len], &data[len*2], (const char**)&data[len*3], NULL, 0, 0, len, 0, 0};
 	// main
-	while (params.pass < proc_params->passes) {
+	while (params.pass < passes) {
 		// forward
-		for (params.index = 0; params.index < proc_params->length && !params.err1; params.index++) {
-			if (proc_params->data[params.index]) {
-				proc_params->err_idx = params.index;
-				((cbatch_proc_t)proc_params->data[params.index])(&params);
+		for (params.index = 0; params.index < len && !params.err1; params.index++) {
+			if (data[params.index]) {
+				*err_idx = params.index;
+				((batch_task_func_t)data[params.index])(&params);
 			}
 		}
 		// backwards
-		if (!params.err1 && ++params.pass < proc_params->passes) {
-			params.index = proc_params->length - 1;
+		if (!params.err1 && ++params.pass < passes) {
+			params.index = len - 1;
 			while (!params.err1) {
-				if (proc_params->data[params.index]) {
-					proc_params->err_idx = params.index;
-					((cbatch_proc_t)proc_params->data[params.index])(&params);
+				if (data[params.index]) {
+					*err_idx = params.index;
+					((batch_task_func_t)data[params.index])(&params);
 				}
 				if (params.index > 0)
 					params.index--;
@@ -60,22 +58,22 @@ void cbatch_proc(cbatch_proc_params_t *const proc_params) {
 	}
 	// error handling
 	if (params.err1) {
-		params.pass = -(params.pass + 1), params.index = proc_params->length - 1;
+		params.pass = -(params.pass + 1), params.index = len - 1;
 		while (true) {
-			if (proc_params->data[params.index]) {
-				((cbatch_proc_t)proc_params->data[params.index])(&params);
+			if (data[params.index]) {
+				((batch_task_func_t)data[params.index])(&params);
 			}
 			if (params.index > 0)
 				params.index--;
 			else
 				break;
 		}
-		proc_params->err1 = params.err1;
-		proc_params->err2 = params.err2;
-		proc_params->err_str = params.err_str;
+		*err1 = params.err1;
+		*err2 = params.err2;
+		*err_str = (char*)params.err_str;
 	}
 }
 
-void cbatch_free(void **const data) {
+void aca_batch_free(void **const data) {
 	free((void*)data);
 }

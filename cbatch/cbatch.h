@@ -5,17 +5,9 @@
 extern "C" {
 #endif
 
-typedef struct {
-	int64_t err1, err2;
-	const char *err_str;
-	void **data;
-	size_t err_idx, length;
-	int32_t passes;
-} cbatch_proc_params_t;
-
-extern void cbatch_alloc(void ***data, size_t total_length);
-extern void cbatch_proc(cbatch_proc_params_t *params);
-extern void cbatch_free(void **data);
+void aca_batch_alloc(void ***data, int_fast32_t total_len);
+void aca_batch_run(void **data, int_fast32_t *err1, int_fast32_t *err2, int_fast32_t *err_idx, char **err_str, int_fast32_t len, int_fast32_t passes);
+void aca_batch_free(void **data);
 
 #ifdef __cplusplus
 }
