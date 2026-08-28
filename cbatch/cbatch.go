@@ -51,7 +51,7 @@ type Task interface {
 	// CData returns pointer to C function and C data1, data2.
 	CData(step Step) (unsafe.Pointer, unsafe.Pointer, unsafe.Pointer)
 	AsError(num1, num2 int, str string) error
-	SetCData(data1, data2 unsafe.Pointer)
+	SetCData(step Step, data1, data2 unsafe.Pointer)
 }
 
 // NewSequence returns a new instance of Sequence.
@@ -154,7 +154,7 @@ func (seq Sequence) RunInit(tasks []Task, passes int) error {
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[length+i], seq[length*2+i])
+			tasks[i].SetCData(Init, seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -171,7 +171,7 @@ func (seq Sequence) RunProcess(tasks []Task, passes int) error {
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[length+i], seq[length*2+i])
+			tasks[i].SetCData(Process, seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -188,7 +188,7 @@ func (seq Sequence) RunDestroy(tasks []Task, passes int) error {
 	err := seq.Run(passes)
 	if err == nil {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[length+i], seq[length*2+i])
+			tasks[i].SetCData(Destroy, seq[length+i], seq[length*2+i])
 		}
 		return nil
 	}
@@ -255,15 +255,15 @@ func (seq Sequence) Setup(step Step, tasks []Task, indices ...int) {
 }
 
 // Sync writes C data to tasks. Applies to all when indices empty.
-func (seq Sequence) Sync(tasks []Task, indices ...int) {
+func (seq Sequence) Sync(step Step, tasks []Task, indices ...int) {
 	length := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			tasks[index].SetCData(seq[length+index], seq[length*2+index])
+			tasks[index].SetCData(step, seq[length+index], seq[length*2+index])
 		}
 	} else {
 		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(seq[length+i], seq[length*2+i])
+			tasks[i].SetCData(step, seq[length+i], seq[length*2+i])
 		}
 	}
 }
