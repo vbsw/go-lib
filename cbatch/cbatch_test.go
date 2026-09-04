@@ -14,12 +14,12 @@ import (
 
 func newTestData(length int) (Sequence, []int) {
 	seq := NewSequence(4)
-	dummy := make([]int, length*SequenceChunks)
-	for i := range dummy {
-		dummy[i] = i
-		seq[i] = unsafe.Pointer(&dummy[i])
+	ascendingNumbers := make([]int, length*SequenceChunks)
+	for i := range ascendingNumbers {
+		ascendingNumbers[i] = i
+		seq[i] = unsafe.Pointer(&ascendingNumbers[i])
 	}
-	return seq, dummy
+	return seq, ascendingNumbers
 }
 
 func TestNew(t *testing.T) {

@@ -11,6 +11,7 @@ package cbatch
 // #include <limits.h>
 // #include <stdint.h>
 // #include "cbatch.h"
+// typedef struct {int x; int y;} foo_t;
 import "C"
 import (
 	"strconv"
@@ -26,8 +27,9 @@ const (
 const (
 	maxInt         = int((^uint(0)) >> 1)
 	maxInt32       = int32((^uint32(0)) >> 1)
+	maxIntFast32   = C.int_fast32_t((^C.uint_fast32_t(0)) >> 1)
 	SequenceChunks = 4
-	MaxSequenceLen = (min(min(uint64(C.LONG_MAX), uint64(C.SIZE_MAX)), uint64(maxInt)) / SequenceChunks) / uint64(unsafe.Sizeof(unsafe.Pointer(nil)))
+	MaxSequenceLen = (min(min(uint64(maxIntFast32), uint64(C.SIZE_MAX)), uint64(maxInt)) / SequenceChunks) / uint64(unsafe.Sizeof(unsafe.Pointer(nil)))
 )
 
 // Step represents a step in a task.
@@ -40,6 +42,10 @@ type Error struct {
 	Num1     int
 	Num2     int
 	Index    int
+}
+
+type Bla struct {
+	yoyo C.foo_t
 }
 
 // Sequence holds pointers to functions and data
