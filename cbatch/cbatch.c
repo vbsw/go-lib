@@ -19,8 +19,8 @@ typedef struct {
 
 typedef void (*batch_task_func_t)(batch_task_params_t *params);
 
-void aca_batch_alloc(void ***const data, const int_fast32_t total_len) {
-	const size_t size = (size_t)total_len*sizeof(void*);
+void aca_batch_alloc(void ***const data, const int_fast32_t data_len) {
+	const size_t size = (size_t)data_len*sizeof(void*);
 	void *const data_new = malloc(size);
 	memset(data_new, 0, size);
 	*data = (void**)data_new;

@@ -24,11 +24,9 @@ const (
 )
 
 const (
-	maxInt         = int((^uint(0)) >> 1)
-	maxInt32       = int32((^uint32(0)) >> 1)
 	maxIntFast32   = C.int_fast32_t((^C.uint_fast32_t(0)) >> 1)
 	SequenceChunks = 4
-	MaxSequenceLen = (min(min(uint64(maxIntFast32), uint64(C.SIZE_MAX)), uint64(maxInt)) / SequenceChunks) / uint64(unsafe.Sizeof(unsafe.Pointer(nil)))
+	MaxSequenceLen = (min(uint64(maxIntFast32), uint64(C.SIZE_MAX)) / SequenceChunks) / uint64(unsafe.Sizeof(unsafe.Pointer(nil)))
 )
 
 // Step represents a step in a task.
@@ -58,20 +56,26 @@ type Task interface {
 // NewSequence returns a new instance of Sequence.
 // Sequence is an array allocated in C and must be released when no more needed.
 func NewSequence(length int) Sequence {
-	if length > 0 && uint64(length) <= MaxSequenceLen {
-		var dataC *unsafe.Pointer
-		totalLength := length * SequenceChunks
-		C.aca_batch_alloc(&dataC, C.int_fast32_t(totalLength))
-		if dataC != nil {
-			return unsafe.Slice(dataC, totalLength)
+	if length > 0 {
+		if uint64(length) <= MaxSequenceLen {
+			var dataC *unsafe.Pointer
+			dataLen := length * SequenceChunks
+			C.aca_batch_alloc(&dataC, C.int_fast32_t(dataLen))
+			if dataC != nil {
+				return unsafe.Slice(dataC, dataLen)
+			}
+			return nil
 		}
-		return nil
+		panic("sequence length overflow")
 	}
-	panic("sequence length not supported")
+	panic("sequence length underflow")
 }
 
-// Remove removes elements from tasks array and returns it.
-// Indices must be in ascending order.
+// Remove removes elements from tasks array and returns this modified tasks array.
+//
+// Precondition:
+//
+//	len(tasks) >= len(indices) && indices[i] < indices[i+1] && 0 <= indices[i] < len(tasks)
 func Remove(tasks []Task, indices ...int) []Task {
 	if len(indices) > 0 {
 		var gap, gapFrom, gapTo int
@@ -85,7 +89,7 @@ func Remove(tasks []Task, indices ...int) []Task {
 				gap += (gapTo - gapFrom)
 				gapFrom, gapTo = index, index+1
 			} else {
-				panic("wrong indices order")
+				panic("indices not in ascending order")
 			}
 		}
 		if gapTo < len(tasks) {
@@ -96,37 +100,42 @@ func Remove(tasks []Task, indices ...int) []Task {
 	return tasks
 }
 
-// Disable sets functions to be skipped in Run. Applies to all when indices empty.
+// Disable sets functions to nil so they are skipped in Run.
+// Applies to all when indices empty.
 // To enable entries back again use Setup().
+//
+// Precondition:
+//
+//	seq.Len() >= len(indices) && 0 <= indices[i] < seq.Len()
 func (seq Sequence) Disable(indices ...int) {
-	length := seq.Len()
+	seqLen := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			seq[index], seq[length+index], seq[length*2+index] = nil, nil, nil
+			seq[index], seq[seqLen+index], seq[seqLen*2+index] = nil, nil, nil
 		}
 	} else {
-		for i := 0; i < length; i++ {
-			seq[i], seq[length+i], seq[length*2+i] = nil, nil, nil
+		for i := 0; i < seqLen; i++ {
+			seq[i], seq[seqLen+i], seq[seqLen*2+i] = nil, nil, nil
 		}
 	}
 }
 
-// Len returns number of tasks in Sequence.
+// Len returns maximum number of tasks in Sequence.
 func (seq Sequence) Len() int {
 	return len(seq) / SequenceChunks
 }
 
 // Run processes C data in Sequence.
 func (seq Sequence) Run(passes int) *Error {
-	length := seq.Len()
-	if passes > 0 && length > 0 {
-		if uint64(passes) <= uint64(maxInt32) {
+	seqLen := seq.Len()
+	if passes > 0 && seqLen > 0 {
+		if uint64(passes) <= uint64(maxIntFast32) {
 			var err1, err2, err_idx C.int_fast32_t
 			var err_str *C.char
-			C.aca_batch_run(&seq[0], &err1, &err2, &err_idx, &err_str, C.int_fast32_t(length), C.int_fast32_t(passes))
+			C.aca_batch_run(&seq[0], &err1, &err2, &err_idx, &err_str, C.int_fast32_t(seqLen), C.int_fast32_t(passes))
 			if err1 != 0 {
 				err := new(Error)
-				taskNameC := seq[length*3+err.Index]
+				taskNameC := seq[seqLen*3+err.Index]
 				err.Index = int(err_idx)
 				err.Num1 = int(err1)
 				err.Num2 = int(err2)
@@ -140,7 +149,7 @@ func (seq Sequence) Run(passes int) *Error {
 			}
 			return nil
 		}
-		panic("passes count not supported")
+		panic("passes count overflow")
 	}
 	return nil
 }
@@ -148,14 +157,14 @@ func (seq Sequence) Run(passes int) *Error {
 // RunInit is abbreviation for Setup(Init), Run(passes),
 // Sync(tasks) and AsError(tasks)
 func (seq Sequence) RunInit(tasks []Task, passes int) error {
-	length := seq.Len()
-	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Init)
+	seqLen := seq.Len()
+	for i := 0; i < seqLen && i < len(tasks); i++ {
+		seq[i], seq[seqLen+i], seq[seqLen*2+i] = tasks[i].CData(Init)
 	}
 	err := seq.Run(passes)
 	if err == nil {
-		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(Init, seq[length+i], seq[length*2+i])
+		for i := 0; i < seqLen && i < len(tasks); i++ {
+			tasks[i].SetCData(Init, seq[seqLen+i], seq[seqLen*2+i])
 		}
 		return nil
 	}
@@ -165,14 +174,14 @@ func (seq Sequence) RunInit(tasks []Task, passes int) error {
 // RunProcess is abbreviation for Setup(Process), Run(passes),
 // Sync(tasks) and AsError(tasks)
 func (seq Sequence) RunProcess(tasks []Task, passes int) error {
-	length := seq.Len()
-	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Process)
+	seqLen := seq.Len()
+	for i := 0; i < seqLen && i < len(tasks); i++ {
+		seq[i], seq[seqLen+i], seq[seqLen*2+i] = tasks[i].CData(Process)
 	}
 	err := seq.Run(passes)
 	if err == nil {
-		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(Process, seq[length+i], seq[length*2+i])
+		for i := 0; i < seqLen && i < len(tasks); i++ {
+			tasks[i].SetCData(Process, seq[seqLen+i], seq[seqLen*2+i])
 		}
 		return nil
 	}
@@ -182,14 +191,14 @@ func (seq Sequence) RunProcess(tasks []Task, passes int) error {
 // RunDestroy is abbreviation for Setup(Destroy), Run(passes),
 // Sync(tasks) and AsError(tasks)
 func (seq Sequence) RunDestroy(tasks []Task, passes int) error {
-	length := seq.Len()
-	for i := 0; i < length && i < len(tasks); i++ {
-		seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(Destroy)
+	seqLen := seq.Len()
+	for i := 0; i < seqLen && i < len(tasks); i++ {
+		seq[i], seq[seqLen+i], seq[seqLen*2+i] = tasks[i].CData(Destroy)
 	}
 	err := seq.Run(passes)
 	if err == nil {
-		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(Destroy, seq[length+i], seq[length*2+i])
+		for i := 0; i < seqLen && i < len(tasks); i++ {
+			tasks[i].SetCData(Destroy, seq[seqLen+i], seq[seqLen*2+i])
 		}
 		return nil
 	}
@@ -204,17 +213,20 @@ func (seq Sequence) Release() Sequence {
 	return nil
 }
 
-// Remove removes elements from Sequence and returns it.
-// Indices must be in ascending order, in interval [0,seq.Len()) and must not remove everything.
+// Remove removes elements from Sequence and returns this modified Sequence.
 // (There is no function, yet, to insert them back again.)
+//
+// Precondition:
+//
+//	len(indices) == 0 || seq.Len() > len(indices) && indices[i] < indices[i+1] && 0 <= indices[i] < seq.Len()
 func (seq Sequence) Remove(indices ...int) Sequence {
 	if len(indices) > 0 {
-		if length := seq.Len(); length > len(indices) {
+		if seqLen := seq.Len(); len(indices) < seqLen {
 			var gap, gapFrom, gapTo int
 			// entries are removed from each chunk and moved to front to close the gap
 			for i := 0; i < SequenceChunks; i++ {
 				for _, index := range indices {
-					offIdx := length*i + index
+					offIdx := seqLen*i + index
 					if gapFrom == gapTo {
 						gapFrom, gapTo = offIdx, offIdx+1
 					} else if gapTo == offIdx {
@@ -224,7 +236,7 @@ func (seq Sequence) Remove(indices ...int) Sequence {
 						gap += (gapTo - gapFrom)
 						gapFrom, gapTo = offIdx, offIdx+1
 					} else {
-						panic("wrong indices order")
+						panic("indices not in ascending order")
 					}
 				}
 			}
@@ -232,44 +244,56 @@ func (seq Sequence) Remove(indices ...int) Sequence {
 			if gapTo < len(seq) {
 				copy(seq[gapFrom-gap:], seq[gapTo:])
 			}
-			// adjust length
+			// adjust seqLen
 			seq = seq[:len(seq)-len(indices)*SequenceChunks]
 		} else {
-			panic("wrong indices length")
+			panic("indices length overflow")
 		}
 	}
 	return seq
 }
 
 // Setup sets functions and data for Run. Applies to all when indices empty.
+//
+// Precondition:
+//
+//	0 <= indices[i] < seq.Len() && 0 <= indices[i] < len(tasks)
 func (seq Sequence) Setup(step Step, tasks []Task, indices ...int) {
-	length := seq.Len()
+	seqLen := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			seq[index], seq[length+index], seq[length*2+index] = tasks[index].CData(step)
+			seq[index], seq[seqLen+index], seq[seqLen*2+index] = tasks[index].CData(step)
 		}
 	} else {
-		for i := 0; i < length && i < len(tasks); i++ {
-			seq[i], seq[length+i], seq[length*2+i] = tasks[i].CData(step)
+		for i := 0; i < seqLen && i < len(tasks); i++ {
+			seq[i], seq[seqLen+i], seq[seqLen*2+i] = tasks[i].CData(step)
 		}
 	}
 }
 
 // Sync writes C data to tasks. Applies to all when indices empty.
+//
+// Precondition:
+//
+//	0 <= indices[i] < seq.Len() && 0 <= indices[i] < len(tasks)
 func (seq Sequence) Sync(step Step, tasks []Task, indices ...int) {
-	length := seq.Len()
+	seqLen := seq.Len()
 	if len(indices) > 0 {
 		for _, index := range indices {
-			tasks[index].SetCData(step, seq[length+index], seq[length*2+index])
+			tasks[index].SetCData(step, seq[seqLen+index], seq[seqLen*2+index])
 		}
 	} else {
-		for i := 0; i < length && i < len(tasks); i++ {
-			tasks[i].SetCData(step, seq[length+i], seq[length*2+i])
+		for i := 0; i < seqLen && i < len(tasks); i++ {
+			tasks[i].SetCData(step, seq[seqLen+i], seq[seqLen*2+i])
 		}
 	}
 }
 
-// AsError converts cbatch's Error to Go error and returns it.
+// AsError passes cbatch's Error to task's AsError it came from and returns its result.
+//
+// Precondition:
+//
+//	0 <= batchErr.Index < len(tasks)
 func (batchErr *Error) AsError(tasks []Task) error {
 	err := tasks[batchErr.Index].AsError(batchErr.Num1, batchErr.Num2, batchErr.Str)
 	if err != nil {
@@ -278,6 +302,7 @@ func (batchErr *Error) AsError(tasks []Task) error {
 	return batchErr
 }
 
+// Error converts Error data to string and returns it.
 func (batchErr *Error) Error() string {
 	var str string
 	if batchErr.Num1 < 1000000 {
