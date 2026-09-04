@@ -11,7 +11,6 @@ package cbatch
 // #include <limits.h>
 // #include <stdint.h>
 // #include "cbatch.h"
-// typedef struct {int x; int y;} foo_t;
 import "C"
 import (
 	"strconv"
@@ -42,10 +41,6 @@ type Error struct {
 	Num1     int
 	Num2     int
 	Index    int
-}
-
-type Bla struct {
-	yoyo C.foo_t
 }
 
 // Sequence holds pointers to functions and data
