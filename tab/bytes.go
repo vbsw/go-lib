@@ -5,10 +5,10 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-package tabformat
+package tab
 
-// ByteParser holds parse state.
-type ByteParser struct {
+// ParserB holds parse state. It provides parsing of byte array.
+type ParserB struct {
 	KeyBegin, KeyEnd   int
 	ValBegin, ValEnd   int
 	KeyLen, ValLen     int
@@ -18,12 +18,12 @@ type ByteParser struct {
 	nextKeyBegin       int
 	nextLineBegin      int
 	state              stateType
-	IgnoreOpenEnd      bool
+	ParseLastLine      bool
 }
 
 // Next reads bytes and stores key and value.
-// Returns true if line has been read.
-func (p *ByteParser) Next(bytes []byte) bool {
+// Returns true when line has been read.
+func (p *ParserB) Next(bytes []byte) bool {
 	for true {
 		switch p.state {
 		case stateNewLine:
@@ -73,33 +73,33 @@ func (p *ByteParser) Next(bytes []byte) bool {
 
 // Reset sets all members except LineNumber to zero.
 // Returns unparsed number of bytes.
-func (p *ByteParser) Reset(total int) int {
+func (p *ParserB) Reset(total int) int {
 	rest := total - p.nextLineBegin
-	*p = ByteParser{LineNumber: p.LineNumber}
+	*p = ParserB{LineNumber: p.LineNumber}
 	return rest
 }
 
 // Rest returns unparsed number of bytes.
-func (p *ByteParser) Rest(total int) int {
+func (p *ParserB) Rest(total int) int {
 	return total - p.nextLineBegin
 }
 
 // Key returns key slice.
-func (p *ByteParser) Key(bytes []byte) []byte {
+func (p *ParserB) Key(bytes []byte) []byte {
 	return bytes[p.KeyBegin:p.KeyEnd]
 }
 
 // Value returns value slice.
-func (p *ByteParser) Value(bytes []byte) []byte {
+func (p *ParserB) Value(bytes []byte) []byte {
 	return bytes[p.ValBegin:p.ValEnd]
 }
 
 // Line returns line slice.
-func (p *ByteParser) Line(bytes []byte) []byte {
+func (p *ParserB) Line(bytes []byte) []byte {
 	return bytes[p.LineBegin:p.LineEnd]
 }
 
-func (p *ByteParser) parseLineBounds(bytes []byte) bool {
+func (p *ParserB) parseLineBounds(bytes []byte) bool {
 	for i := p.nextLineBegin; i < len(bytes); i++ {
 		if bytes[i] == '\r' {
 			if i1 := i + 1; i1 < len(bytes) {
@@ -111,7 +111,7 @@ func (p *ByteParser) parseLineBounds(bytes []byte) bool {
 					p.nextLineBegin = i1
 				}
 				return true
-			} else if p.IgnoreOpenEnd {
+			} else if p.ParseLastLine {
 				p.LineNumber++
 				p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, i, i+1
 				return true
@@ -123,7 +123,7 @@ func (p *ByteParser) parseLineBounds(bytes []byte) bool {
 			return true
 		}
 	}
-	if p.nextLineBegin < len(bytes) && p.IgnoreOpenEnd {
+	if p.nextLineBegin < len(bytes) && p.ParseLastLine {
 		p.LineNumber++
 		p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(bytes), len(bytes)
 		return true
@@ -131,7 +131,7 @@ func (p *ByteParser) parseLineBounds(bytes []byte) bool {
 	return false
 }
 
-func (p *ByteParser) parseIndentation(bytes []byte) {
+func (p *ParserB) parseIndentation(bytes []byte) {
 	p.KeyBegin, p.Indent = p.LineBegin, 0
 	for p.KeyBegin < p.LineEnd && bytes[p.KeyBegin] == '\t' {
 		p.Indent++
@@ -139,7 +139,7 @@ func (p *ByteParser) parseIndentation(bytes []byte) {
 	}
 }
 
-func (p *ByteParser) parseInlineChildPrefix(bytes []byte) bool {
+func (p *ParserB) parseInlineChildPrefix(bytes []byte) bool {
 	if p.KeyBegin < p.LineEnd && bytes[p.KeyBegin] == '\\' {
 		if keyBegin1 := p.KeyBegin + 1; keyBegin1 < p.LineEnd {
 			if iByte := bytes[keyBegin1]; iByte != '\\' && iByte != '#' && iByte != '|' {
@@ -151,7 +151,7 @@ func (p *ByteParser) parseInlineChildPrefix(bytes []byte) bool {
 	return false
 }
 
-func (p *ByteParser) parseKeyValue(bytes []byte) {
+func (p *ParserB) parseKeyValue(bytes []byte) {
 	stateOld := p.state
 	p.KeyEnd, p.state = iParseKeyB(bytes, p.KeyBegin, p.LineEnd, p.state)
 	if stateOld == p.state {

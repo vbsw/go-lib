@@ -5,9 +5,9 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-// Package tabformat provides a parser for a simple, tab-indented data format.
+// Package tab provides a parser for a simple, tab-indented data format.
 // The format represents hierarchical structures using leading tab characters.
-package tabformat
+package tab
 
 type stateType uint8
 

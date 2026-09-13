@@ -5,14 +5,14 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-package tabformat
+package tab
 
 import (
 	"testing"
 )
 
 func TestLineBeginEnd1(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\nccc ddd\reee fff\r\nggg\r")
 	success := parser.Next(line)
 	if success != true {
@@ -31,7 +31,7 @@ func TestLineBeginEnd1(t *testing.T) {
 }
 
 func TestLineBeginEnd2(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\nccc ddd\reee fff\r\nggg\r")
 	parser.Next(line)
 	success := parser.Next(line)
@@ -51,7 +51,7 @@ func TestLineBeginEnd2(t *testing.T) {
 }
 
 func TestLineBeginEnd3(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\nccc ddd\reee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
@@ -72,7 +72,7 @@ func TestLineBeginEnd3(t *testing.T) {
 }
 
 func TestLineBeginEnd4(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\nccc ddd\reee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
@@ -81,7 +81,7 @@ func TestLineBeginEnd4(t *testing.T) {
 	if success != false {
 		t.Error("wrong success:", success)
 	} else {
-		parser.IgnoreOpenEnd = true
+		parser.ParseLastLine = true
 		success = parser.Next(line)
 		if success != true {
 			t.Error("wrong success:", success)
@@ -100,7 +100,7 @@ func TestLineBeginEnd4(t *testing.T) {
 }
 
 func TestElementBeginEnd(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\nccc ddd\reee fff\r\nggg\r")
 	parser.Next(line)
 	if parser.KeyBegin != 0 {
@@ -124,7 +124,7 @@ func TestElementBeginEnd(t *testing.T) {
 }
 
 func TestIndent(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\n\tccc ddd\r\t\teee fff\r\n\t\t\t\tggg\r")
 	parser.Next(line) // aaa bbb
 	if parser.Indent != 0 {
@@ -138,7 +138,7 @@ func TestIndent(t *testing.T) {
 			if parser.Indent != 2 {
 				t.Error("wrong indent:", parser.Indent)
 			} else {
-				parser.IgnoreOpenEnd = true
+				parser.ParseLastLine = true
 				parser.Next(line) // tggg
 				if parser.Indent != 4 {
 					t.Error("wrong indent:", parser.Indent)
@@ -149,7 +149,7 @@ func TestIndent(t *testing.T) {
 }
 
 func TestElement(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa   bbb   |   ccc  ddd eee   \r ")
 	parser.Next(line)
 	if len(parser.Value(line)) != 3 {
@@ -171,7 +171,7 @@ func TestElement(t *testing.T) {
 }
 
 func TestComment1(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb#ccc ddd|eee fff\r\ngg#g\r")
 	success := parser.Next(line)
 	if success != true {
@@ -194,10 +194,10 @@ func TestComment1(t *testing.T) {
 }
 
 func TestComment2(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb#ccc ddd|eee fff\r\ngg#g\r")
 	parser.Next(line)
-	parser.IgnoreOpenEnd = true
+	parser.ParseLastLine = true
 	success := parser.Next(line)
 	if success != true {
 		t.Error("wrong success:", success)
@@ -219,13 +219,13 @@ func TestComment2(t *testing.T) {
 }
 
 func TestComment3(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb#ccc ddd|eee fff\r\ngg#g\r")
 	parser.Next(line)
 	if parser.state != stateNewLine {
 		t.Error("wrong state:", parser.state)
 	}
-	parser.IgnoreOpenEnd = true
+	parser.ParseLastLine = true
 	parser.Next(line)
 	if parser.state != stateNewLine {
 		t.Error("wrong state:", parser.state)
@@ -247,7 +247,7 @@ func TestComment3(t *testing.T) {
 }
 
 func TestInline1(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	success := parser.Next(line)
 	if success != true {
@@ -268,7 +268,7 @@ func TestInline1(t *testing.T) {
 }
 
 func TestInline2(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	success := parser.Next(line)
@@ -290,7 +290,7 @@ func TestInline2(t *testing.T) {
 }
 
 func TestInline3(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
@@ -313,12 +313,12 @@ func TestInline3(t *testing.T) {
 }
 
 func TestInline4(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
 	parser.Next(line)
-	parser.IgnoreOpenEnd = true
+	parser.ParseLastLine = true
 	success := parser.Next(line)
 	if success != true {
 		t.Error("wrong success:", success)
@@ -338,7 +338,7 @@ func TestInline4(t *testing.T) {
 }
 
 func TestInlineElement1(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
@@ -358,7 +358,7 @@ func TestInlineElement1(t *testing.T) {
 }
 
 func TestInlineElement2(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
@@ -379,12 +379,12 @@ func TestInlineElement2(t *testing.T) {
 }
 
 func TestInlineElement3(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
 	parser.Next(line)
 	parser.Next(line)
 	parser.Next(line)
-	parser.IgnoreOpenEnd = true
+	parser.ParseLastLine = true
 	parser.Next(line)
 	if parser.KeyBegin != 25 {
 		t.Error("wrong key begin:", parser.KeyBegin)
@@ -402,7 +402,7 @@ func TestInlineElement3(t *testing.T) {
 }
 
 func TestIncomplete1(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb")
 	success := parser.Next(line)
 	if success != false {
@@ -412,7 +412,7 @@ func TestIncomplete1(t *testing.T) {
 	} else if parser.Rest(len(line)) != 7 {
 		t.Error("wrong incomplete length:", parser.Rest(len(line)))
 	} else {
-		parser.IgnoreOpenEnd = true
+		parser.ParseLastLine = true
 		success = parser.Next(line)
 		if success != true {
 			t.Error("wrong success:", success)
@@ -425,7 +425,7 @@ func TestIncomplete1(t *testing.T) {
 }
 
 func TestIncomplete2(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	lineAAA := []byte("aaa bbb")
 	lineCCC := []byte("aaa bbb\nccc ddd")
 	parser.Next(lineAAA)
@@ -438,7 +438,7 @@ func TestIncomplete2(t *testing.T) {
 			t.Error("wrong success:", success)
 		} else {
 			rest := parser.Reset(len(lineCCC))
-			parser.IgnoreOpenEnd = true
+			parser.ParseLastLine = true
 			lineEEE := []byte("aaa bbb\nccc ddd|eee fff\r")
 			lineEEE = lineEEE[len(lineCCC)-rest:]
 			success = parser.Next(lineEEE) // stateInlineChild
@@ -454,7 +454,7 @@ func TestIncomplete2(t *testing.T) {
 }
 
 func TestIncomplete3(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbb#ccc ddd|eee fff\r\ngg#g\r")
 	success := parser.Next(line)
 	if success != true {
@@ -476,7 +476,7 @@ func TestIncomplete3(t *testing.T) {
 }
 
 func TestReset(t *testing.T) {
-	var parser ByteParser
+	var parser ParserB
 	line := []byte("aaa bbbb#ccc ddd|eee fff\r\ngg#g\r")
 	success := parser.Next(line)
 	if success != true {

@@ -5,10 +5,10 @@
  *        http://www.boost.org/LICENSE_1_0.txt)
  */
 
-package tabformat
+package tab
 
-// StringParser holds parse state.
-type StringParser struct {
+// ParserS holds parse state. It provides parsing of string.
+type ParserS struct {
 	KeyBegin, KeyEnd   int
 	ValBegin, ValEnd   int
 	KeyLen, ValLen     int
@@ -18,12 +18,12 @@ type StringParser struct {
 	nextKeyBegin       int
 	nextLineBegin      int
 	state              stateType
-	IgnoreOpenEnd      bool
+	ParseLastLine      bool
 }
 
 // Next reads bytes and stores key and value.
 // Returns true if line has been read.
-func (p *StringParser) Next(s string) bool {
+func (p *ParserS) Next(s string) bool {
 	for true {
 		switch p.state {
 		case stateNewLine:
@@ -73,33 +73,33 @@ func (p *StringParser) Next(s string) bool {
 
 // Reset sets all members except LineNumber to zero.
 // Returns unparsed number of bytes.
-func (p *StringParser) Reset(total int) int {
+func (p *ParserS) Reset(total int) int {
 	rest := total - p.nextLineBegin
-	*p = StringParser{LineNumber: p.LineNumber}
+	*p = ParserS{LineNumber: p.LineNumber}
 	return rest
 }
 
 // Rest returns unparsed number of bytes.
-func (p *StringParser) Rest(total int) int {
+func (p *ParserS) Rest(total int) int {
 	return total - p.nextLineBegin
 }
 
 // Key returns key string.
-func (p *StringParser) Key(s string) string {
+func (p *ParserS) Key(s string) string {
 	return s[p.KeyBegin:p.KeyEnd]
 }
 
 // Value returns value string.
-func (p *StringParser) Value(s string) string {
+func (p *ParserS) Value(s string) string {
 	return s[p.ValBegin:p.ValEnd]
 }
 
 // Line returns line string.
-func (p *StringParser) Line(s string) string {
+func (p *ParserS) Line(s string) string {
 	return s[p.LineBegin:p.LineEnd]
 }
 
-func (p *StringParser) parseLineBounds(s string) bool {
+func (p *ParserS) parseLineBounds(s string) bool {
 	for i := p.nextLineBegin; i < len(s); i++ {
 		if s[i] == '\r' {
 			if i1 := i + 1; i1 < len(s) {
@@ -111,7 +111,7 @@ func (p *StringParser) parseLineBounds(s string) bool {
 					p.nextLineBegin = i1
 				}
 				return true
-			} else if p.IgnoreOpenEnd {
+			} else if p.ParseLastLine {
 				p.LineNumber++
 				p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, i, i+1
 				return true
@@ -123,7 +123,7 @@ func (p *StringParser) parseLineBounds(s string) bool {
 			return true
 		}
 	}
-	if p.nextLineBegin < len(s) && p.IgnoreOpenEnd {
+	if p.nextLineBegin < len(s) && p.ParseLastLine {
 		p.LineNumber++
 		p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(s), len(s)
 		return true
@@ -131,7 +131,7 @@ func (p *StringParser) parseLineBounds(s string) bool {
 	return false
 }
 
-func (p *StringParser) parseIndentation(s string) {
+func (p *ParserS) parseIndentation(s string) {
 	p.KeyBegin, p.Indent = p.LineBegin, 0
 	for p.KeyBegin < p.LineEnd && s[p.KeyBegin] == '\t' {
 		p.Indent++
@@ -139,7 +139,7 @@ func (p *StringParser) parseIndentation(s string) {
 	}
 }
 
-func (p *StringParser) parseInlineChildPrefix(s string) bool {
+func (p *ParserS) parseInlineChildPrefix(s string) bool {
 	if p.KeyBegin < p.LineEnd && s[p.KeyBegin] == '\\' {
 		if keyBegin1 := p.KeyBegin + 1; keyBegin1 < p.LineEnd {
 			if iByte := s[keyBegin1]; iByte != '\\' && iByte != '#' && iByte != '|' {
@@ -151,7 +151,7 @@ func (p *StringParser) parseInlineChildPrefix(s string) bool {
 	return false
 }
 
-func (p *StringParser) parseKeyValue(s string) {
+func (p *ParserS) parseKeyValue(s string) {
 	stateOld := p.state
 	p.KeyEnd, p.state = iParseKeyS(s, p.KeyBegin, p.LineEnd, p.state)
 	if stateOld == p.state {
