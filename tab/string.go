@@ -175,7 +175,7 @@ func (p *ParserS) parseKeyValue(s string) {
 func iParseKeyS(s string, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := s[i]; iByte < 0 || iByte > 32 { // non whitespace
+		if iByte := s[i]; iByte > 32 { // non whitespace
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -203,7 +203,7 @@ func iParseKeyS(s string, from, to int, state stateType) (int, stateType) {
 func iParseValueS(s string, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := s[i]; iByte < 0 || iByte > 32 { // non whitespace
+		if iByte := s[i]; iByte > 32 { // non whitespace
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -230,7 +230,7 @@ func iParseValueS(s string, from, to int, state stateType) (int, stateType) {
 
 func isCommentS(str string) bool {
 	for i := 0; i < len(str); i++ {
-		if iByte := str[i]; iByte < 0 || iByte > 32 { // non whitespace
+		if iByte := str[i]; iByte > 32 { // non whitespace
 			if iByte == '#' {
 				return true
 			}
@@ -242,7 +242,7 @@ func isCommentS(str string) bool {
 
 func iSkipWhitespaceS(s string, from, to int) int {
 	for i := from; i < to; i++ {
-		if iByte := s[i]; iByte < 0 || iByte > 32 {
+		if iByte := s[i]; iByte > 32 { // non whitespace
 			return i
 		}
 	}
@@ -251,11 +251,11 @@ func iSkipWhitespaceS(s string, from, to int) int {
 
 func iSkipWhitespaceReverseS(s string, from, to int) int {
 	for i := to - 1; i > from; i-- {
-		if iByte := s[i]; iByte < 0 || iByte > 32 {
+		if iByte := s[i]; iByte > 32 { // non whitespace
 			return i + 1
 		}
 	}
-	if iByte := s[from]; iByte < 0 || iByte > 32 {
+	if iByte := s[from]; iByte > 32 { // non whitespace
 		return from + 1
 	}
 	return from
@@ -263,7 +263,7 @@ func iSkipWhitespaceReverseS(s string, from, to int) int {
 
 func iSkipWhitespaceAndCharS(s string, from, to int, charToSkip byte) int {
 	for i := from; i < to; i++ {
-		if iByte := s[i]; (iByte < 0 || iByte > 32) && iByte != charToSkip {
+		if iByte := s[i]; (iByte > 32) && iByte != charToSkip {
 			return i
 		}
 	}

@@ -175,7 +175,7 @@ func (p *ParserB) parseKeyValue(bytes []byte) {
 func iParseKeyB(bytes []byte, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte < 0 || iByte > 32 { // non whitespace
+		if iByte := bytes[i]; iByte > 32 { // non whitespace
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -203,7 +203,7 @@ func iParseKeyB(bytes []byte, from, to int, state stateType) (int, stateType) {
 func iParseValueB(bytes []byte, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte < 0 || iByte > 32 { // non whitespace
+		if iByte := bytes[i]; iByte > 32 { // non whitespace
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -230,7 +230,7 @@ func iParseValueB(bytes []byte, from, to int, state stateType) (int, stateType) 
 
 func isCommentB(bytes []byte) bool {
 	for iByte := range bytes {
-		if iByte < 0 || iByte > 32 { // non whitespace
+		if iByte > 32 { // non whitespace
 			if iByte == '#' {
 				return true
 			}
@@ -242,7 +242,7 @@ func isCommentB(bytes []byte) bool {
 
 func iSkipWhitespaceB(bytes []byte, from, to int) int {
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte < 0 || iByte > 32 {
+		if iByte := bytes[i]; iByte > 32 { // non whitespace
 			return i
 		}
 	}
@@ -251,11 +251,11 @@ func iSkipWhitespaceB(bytes []byte, from, to int) int {
 
 func iSkipWhitespaceReverseB(bytes []byte, from, to int) int {
 	for i := to - 1; i > from; i-- {
-		if iByte := bytes[i]; iByte < 0 || iByte > 32 {
+		if iByte := bytes[i]; iByte > 32 { // non whitespace
 			return i + 1
 		}
 	}
-	if iByte := bytes[from]; iByte < 0 || iByte > 32 {
+	if iByte := bytes[from]; iByte > 32 { // non whitespace
 		return from + 1
 	}
 	return from
@@ -263,7 +263,7 @@ func iSkipWhitespaceReverseB(bytes []byte, from, to int) int {
 
 func iSkipWhitespaceAndCharB(bytes []byte, from, to int, charToSkip byte) int {
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; (iByte < 0 || iByte > 32) && iByte != charToSkip {
+		if iByte := bytes[i]; (iByte > 32) && iByte != charToSkip {
 			return i
 		}
 	}
