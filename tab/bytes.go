@@ -22,7 +22,7 @@ type ParserB struct {
 }
 
 // Next reads bytes and stores key and value.
-// Returns true when line has been read.
+// Returns true if line has been read.
 func (p *ParserB) Next(bytes []byte) bool {
 	for true {
 		switch p.state {

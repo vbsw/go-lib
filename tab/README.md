@@ -27,7 +27,7 @@ Code:
 		var parser tab.ParserS
 		data := "entities\n\tentity a001\n\t\tsize 500"
 
-		parser.ParseOpenLine = true
+		parser.ParseLastLine = true
 		for parser.Next(data) {
 			switch parser.Key(data) {
 			case "entities":

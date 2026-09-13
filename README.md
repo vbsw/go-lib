@@ -7,7 +7,7 @@ go-lib is a collection of Go functions. It is published on <https://github.com/v
 **cl** - command line arguments parser  
 **fs** - various file functions  
 **match** - simple wildcard and substring checks  
-**tabformat** - tab-indented data format parser  
+**tab** - tab-indented data format parser  
 
 ## References
 - https://go.dev/doc/install
