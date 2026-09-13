@@ -494,3 +494,107 @@ func TestReset(t *testing.T) {
 		}
 	}
 }
+
+func TestListParser1(t *testing.T) {
+	var parser ListParserB
+	line := []byte("one two   three  ")
+	parser.Init(0, len(line))
+	success := parser.Next(line, ' ')
+	if success != true {
+		t.Error("wrong success:", success)
+	} else if string(parser.Entry(line)) != "one" {
+		t.Error("wrong entry:", string(parser.Entry(line)))
+	} else if parser.Index != 0 {
+		t.Error("wrong index:", parser.Index)
+	} else {
+		success = parser.Next(line, ' ')
+		if success != true {
+			t.Error("wrong success:", success)
+		} else if string(parser.Entry(line)) != "two" {
+			t.Error("wrong entry:", string(parser.Entry(line)))
+		} else if parser.Index != 1 {
+			t.Error("wrong index:", parser.Index)
+		} else {
+			success = parser.Next(line, ' ')
+			if success != true {
+				t.Error("wrong success:", success)
+			} else if string(parser.Entry(line)) != "three" {
+				t.Error("wrong entry:", string(parser.Entry(line)))
+			} else if parser.Index != 2 {
+				t.Error("wrong index:", parser.Index)
+			} else if parser.SeparatorBegin < parser.ListEnd {
+				t.Error("wrong offsets:", parser.SeparatorBegin, parser.ListEnd)
+			} else {
+				success = parser.Next(line, ' ')
+				if success != false {
+					t.Error("wrong success:", success)
+				} else if string(parser.Entry(line)) != "" {
+					t.Error("wrong entry:", string(parser.Entry(line)))
+				} else if parser.Index != 2 {
+					t.Error("wrong index:", parser.Index)
+				}
+			}
+		}
+	}
+}
+
+func TestListParser2(t *testing.T) {
+	var parser ListParserB
+	line := []byte(",one, two  , three  , ")
+	parser.Init(0, len(line))
+	success := parser.Next(line, ',')
+	if success != true {
+		t.Error("wrong success:", success)
+	} else if string(parser.Entry(line)) != "" {
+		t.Error("wrong entry:", string(parser.Entry(line)))
+	} else if parser.Index != 0 {
+		t.Error("wrong index:", parser.Index)
+	} else {
+		success = parser.Next(line, ',')
+		if success != true {
+			t.Error("wrong success:", success)
+		} else if string(parser.Entry(line)) != "one" {
+			t.Error("wrong entry:", string(parser.Entry(line)))
+		} else if parser.Index != 1 {
+			t.Error("wrong index:", parser.Index)
+		} else {
+			success = parser.Next(line, ',')
+			if success != true {
+				t.Error("wrong success:", success)
+			} else if string(parser.Entry(line)) != "two" {
+				t.Error("wrong entry:", string(parser.Entry(line)))
+			} else if parser.Index != 2 {
+				t.Error("wrong index:", parser.Index)
+			} else {
+				success = parser.Next(line, ',')
+				if success != true {
+					t.Error("wrong success:", success)
+				} else if string(parser.Entry(line)) != "three" {
+					t.Error("wrong entry:", string(parser.Entry(line)))
+				} else if parser.Index != 3 {
+					t.Error("wrong index:", parser.Index)
+				} else if parser.SeparatorBegin >= parser.ListEnd {
+					t.Error("wrong offsets:", parser.SeparatorBegin, parser.ListEnd)
+				} else {
+					success = parser.Next(line, ',')
+					if success != true {
+						t.Error("wrong success:", success)
+					} else if string(parser.Entry(line)) != "" {
+						t.Error("wrong entry:", string(parser.Entry(line)))
+					} else if parser.Index != 4 {
+						t.Error("wrong index:", parser.Index)
+					} else {
+						success = parser.Next(line, ',')
+						if success != false {
+							t.Error("wrong success:", success)
+						} else if string(parser.Entry(line)) != "" {
+							t.Error("wrong entry:", string(parser.Entry(line)))
+						} else if parser.Index != 4 {
+							t.Error("wrong index:", parser.Index)
+						}
+					}
+				}
+			}
+		}
+	}
+}

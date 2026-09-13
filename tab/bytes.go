@@ -21,7 +21,15 @@ type ParserB struct {
 	ParseLastLine      bool
 }
 
-// Next reads bytes and stores key and value.
+// ListParserB holds parse state. It provides parsing of list values of byte array.
+type ListParserB struct {
+	ListBegin, ListEnd    int
+	EntryBegin, EntryEnd  int
+	EntryLen              int
+	SeparatorBegin, Index int
+}
+
+// Next reads bytes and stores key and value offsets.
 // Returns true if line has been read.
 func (p *ParserB) Next(bytes []byte) bool {
 	for true {
@@ -97,6 +105,85 @@ func (p *ParserB) Value(bytes []byte) []byte {
 // Line returns line slice.
 func (p *ParserB) Line(bytes []byte) []byte {
 	return bytes[p.LineBegin:p.LineEnd]
+}
+
+// ListParserV returns list parser for key.
+func (p *ParserB) ListParserK() ListParserB {
+	var listParser ListParserB
+	listParser.ListBegin = p.KeyBegin
+	listParser.ListEnd = p.KeyEnd
+	listParser.EntryBegin = p.KeyBegin
+	listParser.EntryEnd = p.KeyBegin
+	listParser.SeparatorBegin = p.KeyBegin - 1
+	listParser.Index = -1
+	return listParser
+}
+
+// ListParserV returns list parser for value.
+func (p *ParserB) ListParserV() ListParserB {
+	var listParser ListParserB
+	listParser.ListBegin = p.ValBegin
+	listParser.ListEnd = p.ValEnd
+	listParser.EntryBegin = p.ValBegin
+	listParser.EntryEnd = p.ValBegin
+	listParser.SeparatorBegin = p.ValBegin - 1
+	listParser.Index = -1
+	return listParser
+}
+
+// Entry returns entry slice.
+func (p *ListParserB) Entry(bytes []byte) []byte {
+	return bytes[p.EntryBegin:p.EntryEnd]
+}
+
+// Init initializes list parser state.
+func (p *ListParserB) Init(listBegin, listEnd int) {
+	p.ListBegin = listBegin
+	p.ListEnd = listEnd
+	p.EntryBegin = listBegin
+	p.EntryEnd = listBegin
+	p.SeparatorBegin = listBegin - 1
+	p.Index = -1
+}
+
+// Next reads bytes and stores entry offsets.
+// Returns true if entry has been read.
+func (p *ListParserB) Next(bytes []byte, separator byte) bool {
+	for i := p.SeparatorBegin + 1; i < p.ListEnd; i++ {
+		iByte := bytes[i]
+		if iByte == separator && separator != ' ' {
+			p.EntryBegin, p.EntryEnd, p.SeparatorBegin, p.EntryLen = i, i, i, 0
+			p.Index++
+			return true
+		} else if iByte > 32 {
+			p.EntryBegin = i
+			p.SeparatorBegin = p.ListEnd
+			for j := i + 1; j < p.ListEnd; j++ {
+				if bytes[j] == separator {
+					if separator == ' ' {
+						nextEntryBegin := iSkipWhitespaceB(bytes, j+1, p.ListEnd)
+						if nextEntryBegin < p.ListEnd {
+							p.SeparatorBegin = nextEntryBegin - 1
+						}
+					} else {
+						p.SeparatorBegin = j
+					}
+					break
+				}
+			}
+			p.EntryEnd = iSkipWhitespaceReverseB(bytes, i+1, p.SeparatorBegin)
+			p.EntryLen = p.EntryEnd - p.EntryBegin
+			p.Index++
+			return true
+		}
+	}
+	if p.SeparatorBegin < p.ListEnd {
+		p.EntryBegin, p.EntryEnd, p.SeparatorBegin, p.EntryLen = p.ListEnd, p.ListEnd, p.ListEnd, 0
+		p.Index++
+		return true
+	}
+	p.EntryBegin, p.EntryEnd, p.EntryLen = p.ListEnd, p.ListEnd, 0
+	return false
 }
 
 func (p *ParserB) parseLineBounds(bytes []byte) bool {
@@ -175,7 +262,7 @@ func (p *ParserB) parseKeyValue(bytes []byte) {
 func iParseKeyB(bytes []byte, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte > 32 { // non whitespace
+		if iByte := bytes[i]; iByte > 32 {
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -203,7 +290,7 @@ func iParseKeyB(bytes []byte, from, to int, state stateType) (int, stateType) {
 func iParseValueB(bytes []byte, from, to int, state stateType) (int, stateType) {
 	var escape bool
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte > 32 { // non whitespace
+		if iByte := bytes[i]; iByte > 32 {
 			if iByte == '\\' {
 				escape = !escape
 			} else if iByte == '#' {
@@ -230,19 +317,19 @@ func iParseValueB(bytes []byte, from, to int, state stateType) (int, stateType) 
 
 func isCommentB(bytes []byte) bool {
 	for iByte := range bytes {
-		if iByte > 32 { // non whitespace
+		if iByte > 32 {
 			if iByte == '#' {
 				return true
 			}
 			return false
-		} // else: whitespace
+		}
 	}
 	return false
 }
 
 func iSkipWhitespaceB(bytes []byte, from, to int) int {
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; iByte > 32 { // non whitespace
+		if bytes[i] > 32 {
 			return i
 		}
 	}
@@ -250,20 +337,17 @@ func iSkipWhitespaceB(bytes []byte, from, to int) int {
 }
 
 func iSkipWhitespaceReverseB(bytes []byte, from, to int) int {
-	for i := to - 1; i > from; i-- {
-		if iByte := bytes[i]; iByte > 32 { // non whitespace
+	for i := to - 1; i >= from; i-- {
+		if bytes[i] > 32 {
 			return i + 1
 		}
-	}
-	if iByte := bytes[from]; iByte > 32 { // non whitespace
-		return from + 1
 	}
 	return from
 }
 
 func iSkipWhitespaceAndCharB(bytes []byte, from, to int, charToSkip byte) int {
 	for i := from; i < to; i++ {
-		if iByte := bytes[i]; (iByte > 32) && iByte != charToSkip {
+		if iByte := bytes[i]; iByte > 32 && iByte != charToSkip {
 			return i
 		}
 	}
