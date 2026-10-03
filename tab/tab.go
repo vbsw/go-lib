@@ -9,7 +9,7 @@
 // The format represents hierarchical structures using leading tab characters.
 package tab
 
-type stateType uint8
+type stateType int
 
 const (
 	stateNewLine stateType = iota

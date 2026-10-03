@@ -107,7 +107,7 @@ func (p *ParserB) Line(bytes []byte) []byte {
 	return bytes[p.LineBegin:p.LineEnd]
 }
 
-// ListParserV returns list parser for key.
+// ListParserV returns initialized list parser for key.
 func (p *ParserB) ListParserK() ListParserB {
 	var listParser ListParserB
 	listParser.ListBegin = p.KeyBegin
@@ -119,7 +119,7 @@ func (p *ParserB) ListParserK() ListParserB {
 	return listParser
 }
 
-// ListParserV returns list parser for value.
+// ListParserV returns initialized list parser for value.
 func (p *ParserB) ListParserV() ListParserB {
 	var listParser ListParserB
 	listParser.ListBegin = p.ValBegin
@@ -146,7 +146,7 @@ func (p *ListParserB) Init(listBegin, listEnd int) {
 	p.Index = -1
 }
 
-// Next reads bytes and stores entry offsets.
+// Next reads bytes and stores entry offsets. Whitespace around entry is skipped.
 // Returns true if entry has been read.
 func (p *ListParserB) Next(bytes []byte, separator byte) bool {
 	for i := p.SeparatorBegin + 1; i < p.ListEnd; i++ {
