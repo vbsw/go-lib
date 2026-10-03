@@ -264,6 +264,14 @@ func TestInline1(t *testing.T) {
 		t.Error("wrong line end:", parser.LineEnd)
 	} else if parser.nextLineBegin != 25 {
 		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "aaa" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "bbb" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateInlineChild {
+		t.Error("wrong next state:", parser.state)
+	} else if parser.nextKeyBegin != 8 {
+		t.Error("wrong next key begin:", parser.nextKeyBegin)
 	}
 }
 
@@ -286,6 +294,12 @@ func TestInline2(t *testing.T) {
 		t.Error("wrong line end:", parser.LineEnd)
 	} else if parser.nextLineBegin != 25 {
 		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "ccc" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "ddd" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateInlineSibling {
+		t.Error("wrong next state:", parser.state)
 	}
 }
 
@@ -596,5 +610,192 @@ func TestListParser2(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestNoInline1(t *testing.T) {
+	var parser ParserB
+	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
+	parser.Next(line)
+	parser.LineToNoInline(line)
+	if parser.LineNumber != 1 {
+		t.Error("line number wrong:", parser.LineNumber)
+	} else if parser.Indent != 0 {
+		t.Error("wrong indent:", parser.Indent)
+	} else if parser.LineBegin >= parser.LineEnd {
+		t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+	} else if parser.LineBegin != 0 {
+		t.Error("wrong line begin:", parser.LineBegin)
+	} else if parser.LineEnd != 23 {
+		t.Error("wrong line end:", parser.LineEnd)
+	} else if parser.nextLineBegin != 25 {
+		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "aaa" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "bbb\\ccc ddd|eee fff" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateNewLine {
+		t.Error("wrong next state:", parser.state)
+	} else if parser.nextKeyBegin != 24 {
+		t.Error("wrong next key begin:", parser.nextKeyBegin)
+	} else {
+		parser.ParseLastLine = true
+		parser.Next(line)
+		if parser.LineNumber != 2 {
+			t.Error("line number wrong:", parser.LineNumber)
+		} else if parser.Indent != 0 {
+			t.Error("wrong indent:", parser.Indent)
+		} else if parser.LineBegin >= parser.LineEnd {
+			t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+		} else if parser.LineBegin != 25 {
+			t.Error("wrong line begin:", parser.LineBegin)
+		} else if parser.LineEnd != 28 {
+			t.Error("wrong line end:", parser.LineEnd)
+		} else if parser.nextLineBegin != 29 {
+			t.Error("wrong next line begin:", parser.nextLineBegin)
+		} else if string(parser.Key(line)) != "ggg" {
+			t.Error("wrong key:", string(parser.Key(line)))
+		} else if string(parser.Value(line)) != "" {
+			t.Error("wrong value:", string(parser.Value(line)))
+		} else if parser.state != stateNewLine {
+			t.Error("wrong next state:", parser.state)
+		} else if parser.nextKeyBegin != 29 {
+			t.Error("wrong next key begin:", parser.nextKeyBegin)
+		}
+	}
+}
+
+func TestNoInline2(t *testing.T) {
+	var parser ParserB
+	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
+	parser.Next(line)
+	parser.ValueToNoInline(line)
+	if parser.LineNumber != 1 {
+		t.Error("line number wrong:", parser.LineNumber)
+	} else if parser.Indent != 0 {
+		t.Error("wrong indent:", parser.Indent)
+	} else if parser.LineBegin >= parser.LineEnd {
+		t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+	} else if parser.LineBegin != 0 {
+		t.Error("wrong line begin:", parser.LineBegin)
+	} else if parser.LineEnd != 23 {
+		t.Error("wrong line end:", parser.LineEnd)
+	} else if parser.nextLineBegin != 25 {
+		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "aaa" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "bbb\\ccc ddd|eee fff" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateNewLine {
+		t.Error("wrong next state:", parser.state)
+	} else if parser.nextKeyBegin != 24 {
+		t.Error("wrong next key begin:", parser.nextKeyBegin)
+	} else {
+		parser.ParseLastLine = true
+		parser.Next(line)
+		if parser.LineNumber != 2 {
+			t.Error("line number wrong:", parser.LineNumber)
+		} else if parser.Indent != 0 {
+			t.Error("wrong indent:", parser.Indent)
+		} else if parser.LineBegin >= parser.LineEnd {
+			t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+		} else if parser.LineBegin != 25 {
+			t.Error("wrong line begin:", parser.LineBegin)
+		} else if parser.LineEnd != 28 {
+			t.Error("wrong line end:", parser.LineEnd)
+		} else if parser.nextLineBegin != 29 {
+			t.Error("wrong next line begin:", parser.nextLineBegin)
+		} else if string(parser.Key(line)) != "ggg" {
+			t.Error("wrong key:", string(parser.Key(line)))
+		} else if string(parser.Value(line)) != "" {
+			t.Error("wrong value:", string(parser.Value(line)))
+		} else if parser.state != stateNewLine {
+			t.Error("wrong next state:", parser.state)
+		} else if parser.nextKeyBegin != 29 {
+			t.Error("wrong next key begin:", parser.nextKeyBegin)
+		}
+	}
+}
+
+func TestNoInline3(t *testing.T) {
+	var parser ParserB
+	line := []byte("aaa bbb\\ccc ddd|eee fff\r\ng\\gg hhh\\iii jjj\r")
+	parser.NextNoInline(line)
+	if parser.LineNumber != 1 {
+		t.Error("line number wrong:", parser.LineNumber)
+	} else if parser.Indent != 0 {
+		t.Error("wrong indent:", parser.Indent)
+	} else if parser.LineBegin >= parser.LineEnd {
+		t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+	} else if parser.LineBegin != 0 {
+		t.Error("wrong line begin:", parser.LineBegin)
+	} else if parser.LineEnd != 23 {
+		t.Error("wrong line end:", parser.LineEnd)
+	} else if parser.nextLineBegin != 25 {
+		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "aaa" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "bbb\\ccc ddd|eee fff" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateNewLine {
+		t.Error("wrong next state:", parser.state)
+	} else if parser.nextKeyBegin != 24 {
+		t.Error("wrong next key begin:", parser.nextKeyBegin)
+	} else {
+		parser.ParseLastLine = true
+		parser.NextNoInline(line)
+		if parser.LineNumber != 2 {
+			t.Error("line number wrong:", parser.LineNumber)
+		} else if parser.Indent != 0 {
+			t.Error("wrong indent:", parser.Indent)
+		} else if parser.LineBegin >= parser.LineEnd {
+			t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+		} else if parser.LineBegin != 25 {
+			t.Error("wrong line begin:", parser.LineBegin)
+		} else if parser.LineEnd != 41 {
+			t.Error("wrong line end:", parser.LineEnd)
+		} else if parser.nextLineBegin != 42 {
+			t.Error("wrong next line begin:", parser.nextLineBegin)
+		} else if string(parser.Key(line)) != "g\\gg" {
+			t.Error("wrong key:", string(parser.Key(line)))
+		} else if string(parser.Value(line)) != "hhh\\iii jjj" {
+			t.Error("wrong value:", string(parser.Value(line)))
+		} else if parser.state != stateNewLine {
+			t.Error("wrong next state:", parser.state)
+		} else if parser.nextKeyBegin != 42 {
+			t.Error("wrong next key begin:", parser.nextKeyBegin)
+		}
+	}
+}
+
+func TestNoInline4(t *testing.T) {
+	var parser ParserB
+	line := []byte("aaa bbb\\ccc ddd|eee fff\r\ng\\gg hhh\\iii jjj\r")
+	parser.NextNoInline(line)
+	parser.ParseLastLine = true
+	parser.Next(line)
+	parser.KeyToNoInline(line)
+	if parser.LineNumber != 2 {
+		t.Error("line number wrong:", parser.LineNumber)
+	} else if parser.Indent != 0 {
+		t.Error("wrong indent:", parser.Indent)
+	} else if parser.LineBegin >= parser.LineEnd {
+		t.Error("empty line:", parser.LineBegin, parser.LineEnd)
+	} else if parser.LineBegin != 25 {
+		t.Error("wrong line begin:", parser.LineBegin)
+	} else if parser.LineEnd != 41 {
+		t.Error("wrong line end:", parser.LineEnd)
+	} else if parser.nextLineBegin != 42 {
+		t.Error("wrong next line begin:", parser.nextLineBegin)
+	} else if string(parser.Key(line)) != "g\\gg" {
+		t.Error("wrong key:", string(parser.Key(line)))
+	} else if string(parser.Value(line)) != "hhh" {
+		t.Error("wrong value:", string(parser.Value(line)))
+	} else if parser.state != stateNewLine {
+		t.Error("wrong next state:", parser.state)
+	} else if parser.nextKeyBegin != 34 {
+		t.Error("wrong next key begin:", parser.nextKeyBegin)
+	} else if line[parser.nextKeyBegin] != 'i' {
+		t.Error("wrong next key begin:", line[parser.nextKeyBegin])
 	}
 }

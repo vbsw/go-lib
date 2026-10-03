@@ -32,51 +32,51 @@ type ListParserB struct {
 // Next reads bytes and stores key and value offsets.
 // Returns true if line has been read.
 func (p *ParserB) Next(bytes []byte) bool {
-	for true {
-		switch p.state {
-		case stateNewLine:
-			if p.parseLineBounds(bytes) {
-				p.LineLen = p.LineEnd - p.LineBegin
-				p.parseIndentation(bytes)
-				p.state = stateNewLinePrefix
-			} else {
-				return false
-			}
-		case stateNewLinePrefix:
-			p.KeyBegin = iSkipWhitespaceAndCharB(bytes, p.KeyBegin, p.LineEnd, '|')
-			if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				if p.parseInlineChildPrefix(bytes) {
-					p.state = stateNewLinePrefix
-				} else {
-					p.parseKeyValue(bytes)
-					return true
-				}
-			}
-		case stateInlineChild:
-			p.KeyBegin = iSkipWhitespaceB(bytes, p.nextKeyBegin, p.LineEnd)
-			for p.parseInlineChildPrefix(bytes) {
-				p.KeyBegin = iSkipWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
-			}
-			if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				p.Indent++
-				p.parseKeyValue(bytes)
-				return true
-			}
-		case stateInlineSibling:
-			p.KeyBegin = iSkipWhitespaceAndCharB(bytes, p.ValEnd, p.LineEnd, '|')
-			if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				p.parseKeyValue(bytes)
-				return true
-			}
-		}
+	return p.next(bytes, false)
+}
+
+// NextNoInline reads bytes and stores key and value offsets.
+// Returns true if line has been read. Inline elements are ignored.
+func (p *ParserB) NextNoInline(bytes []byte) bool {
+	return p.next(bytes, true)
+}
+
+// LineToNoInline reads the whole current line ignoring inline elements.
+func (p *ParserB) LineToNoInline(bytes []byte) {
+	p.parseIndentation(bytes)
+	p.KeyBegin = iSkipWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
+	p.KeyValueToNoInline(bytes)
+}
+
+// KeyToNoInline reads the current key ignoring inline elements.
+func (p *ParserB) KeyToNoInline(bytes []byte) {
+	stateOld := p.state
+	p.KeyEnd = iSkipNonWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
+	p.ValBegin = iSkipWhitespaceB(bytes, p.KeyEnd, p.LineEnd)
+	p.ValEnd, p.state = iParseValueB(bytes, p.ValBegin, p.LineEnd, p.state)
+	p.nextKeyBegin = p.ValEnd + 1
+	p.ValEnd = iSkipWhitespaceReverseB(bytes, p.ValBegin, p.ValEnd)
+	if stateOld == p.state {
+		p.state = stateNewLine
 	}
-	return false
+	p.KeyLen = p.KeyEnd - p.KeyBegin
+	p.ValLen = p.ValEnd - p.ValBegin
+}
+
+// KeyValueToNoInline reads the current key and value ignoring inline elements.
+func (p *ParserB) KeyValueToNoInline(bytes []byte) {
+	p.KeyEnd = iSkipNonWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
+	p.ValBegin = iSkipWhitespaceB(bytes, p.KeyEnd, p.LineEnd)
+	p.KeyLen = p.KeyEnd - p.KeyBegin
+	p.ValueToNoInline(bytes)
+}
+
+// ValueToNoInline reads the current value ignoring inline elements.
+func (p *ParserB) ValueToNoInline(bytes []byte) {
+	p.ValEnd = iSkipWhitespaceReverseB(bytes, p.ValBegin, p.LineEnd)
+	p.nextKeyBegin = p.LineEnd + 1
+	p.ValLen = p.ValEnd - p.ValBegin
+	p.state = stateNewLine
 }
 
 // Reset sets all members except LineNumber to zero.
@@ -107,7 +107,7 @@ func (p *ParserB) Line(bytes []byte) []byte {
 	return bytes[p.LineBegin:p.LineEnd]
 }
 
-// ListParserV returns initialized list parser for key.
+// ListParserK returns initialized list parser for key.
 func (p *ParserB) ListParserK() ListParserB {
 	var listParser ListParserB
 	listParser.ListBegin = p.KeyBegin
@@ -146,7 +146,7 @@ func (p *ListParserB) Init(listBegin, listEnd int) {
 	p.Index = -1
 }
 
-// Next reads bytes and stores entry offsets. Whitespace around entry is skipped.
+// Next reads bytes and stores entry offsets. Whitespace around entry is omitted.
 // Returns true if entry has been read.
 func (p *ListParserB) Next(bytes []byte, separator byte) bool {
 	for i := p.SeparatorBegin + 1; i < p.ListEnd; i++ {
@@ -186,6 +186,63 @@ func (p *ListParserB) Next(bytes []byte, separator byte) bool {
 	return false
 }
 
+func (p *ParserB) next(bytes []byte, noInline bool) bool {
+	for true {
+		switch p.state {
+		case stateNewLine:
+			if p.parseLineBounds(bytes) {
+				p.LineLen = p.LineEnd - p.LineBegin
+				p.parseIndentation(bytes)
+				p.state = stateNewLinePrefix
+			} else {
+				return false
+			}
+		case stateNewLinePrefix:
+			if noInline {
+				p.KeyBegin = iSkipWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
+				p.KeyValueToNoInline(bytes)
+				return true
+			} else {
+				p.KeyBegin = iSkipWhitespaceAndCharB(bytes, p.KeyBegin, p.LineEnd, '|')
+				if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
+					p.state = stateNewLine
+				} else {
+					if p.parseInlineChildPrefix(bytes) {
+						p.state = stateNewLinePrefix
+					} else {
+						p.parseKeyValue(bytes)
+						return true
+					}
+				}
+			}
+		case stateInlineChild:
+			p.KeyBegin = iSkipWhitespaceB(bytes, p.nextKeyBegin, p.LineEnd)
+			for p.parseInlineChildPrefix(bytes) {
+				p.KeyBegin = iSkipWhitespaceB(bytes, p.KeyBegin, p.LineEnd)
+			}
+			if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
+				p.state = stateNewLine
+			} else {
+				p.Indent++
+				p.parseKeyValue(bytes)
+				return true
+			}
+		case stateInlineSibling:
+			p.KeyBegin = iSkipWhitespaceAndCharB(bytes, p.ValEnd, p.LineEnd, '|')
+			if isCommentB(bytes[p.KeyBegin:p.LineEnd]) {
+				p.state = stateNewLine
+			} else {
+				p.parseKeyValue(bytes)
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// parseLineBounds returns true, when end of line has been reached.
+// When this happens offsets are updated, otherwise not.
+// (Exception is, when ParseLastLine is set.)
 func (p *ParserB) parseLineBounds(bytes []byte) bool {
 	for i := p.nextLineBegin; i < len(bytes); i++ {
 		if bytes[i] == '\r' {
@@ -218,6 +275,7 @@ func (p *ParserB) parseLineBounds(bytes []byte) bool {
 	return false
 }
 
+// parseIndentation skips tabs (other characters are not skipped).
 func (p *ParserB) parseIndentation(bytes []byte) {
 	p.KeyBegin, p.Indent = p.LineBegin, 0
 	for p.KeyBegin < p.LineEnd && bytes[p.KeyBegin] == '\t' {
@@ -241,7 +299,7 @@ func (p *ParserB) parseInlineChildPrefix(bytes []byte) bool {
 func (p *ParserB) parseKeyValue(bytes []byte) {
 	stateOld := p.state
 	p.KeyEnd, p.state = iParseKeyB(bytes, p.KeyBegin, p.LineEnd, p.state)
-	if stateOld == p.state {
+	if stateOld == p.state { // more to parse
 		p.ValBegin = iSkipWhitespaceB(bytes, p.KeyEnd, p.LineEnd)
 		p.ValEnd, p.state = iParseValueB(bytes, p.ValBegin, p.LineEnd, p.state)
 		p.nextKeyBegin = p.ValEnd + 1
@@ -249,12 +307,12 @@ func (p *ParserB) parseKeyValue(bytes []byte) {
 		if stateOld == p.state {
 			p.state = stateNewLine
 		}
-	} else {
+	} else { // end here, inline element next
 		p.ValBegin = p.KeyEnd
 		p.ValEnd = p.KeyEnd
 		p.nextKeyBegin = p.KeyEnd + 1
+		p.KeyEnd = iSkipWhitespaceReverseB(bytes, p.KeyBegin, p.KeyEnd)
 	}
-	p.KeyEnd = iSkipWhitespaceReverseB(bytes, p.KeyBegin, p.KeyEnd)
 	p.KeyLen = p.KeyEnd - p.KeyBegin
 	p.ValLen = p.ValEnd - p.ValBegin
 }
@@ -325,6 +383,15 @@ func isCommentB(bytes []byte) bool {
 		}
 	}
 	return false
+}
+
+func iSkipNonWhitespaceB(bytes []byte, from, to int) int {
+	for i := from; i < to; i++ {
+		if bytes[i] <= 32 {
+			return i
+		}
+	}
+	return to
 }
 
 func iSkipWhitespaceB(bytes []byte, from, to int) int {

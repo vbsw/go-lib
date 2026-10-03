@@ -32,51 +32,51 @@ type ListParserS struct {
 // Next reads bytes and stores key and value.
 // Returns true if line has been read.
 func (p *ParserS) Next(s string) bool {
-	for true {
-		switch p.state {
-		case stateNewLine:
-			if p.parseLineBounds(s) {
-				p.LineLen = p.LineEnd - p.LineBegin
-				p.parseIndentation(s)
-				p.state = stateNewLinePrefix
-			} else {
-				return false
-			}
-		case stateNewLinePrefix:
-			p.KeyBegin = iSkipWhitespaceAndCharS(s, p.KeyBegin, p.LineEnd, '|')
-			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				if p.parseInlineChildPrefix(s) {
-					p.state = stateNewLinePrefix
-				} else {
-					p.parseKeyValue(s)
-					return true
-				}
-			}
-		case stateInlineChild:
-			p.KeyBegin = iSkipWhitespaceS(s, p.nextKeyBegin, p.LineEnd)
-			for p.parseInlineChildPrefix(s) {
-				p.KeyBegin = iSkipWhitespaceS(s, p.KeyBegin, p.LineEnd)
-			}
-			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				p.Indent++
-				p.parseKeyValue(s)
-				return true
-			}
-		case stateInlineSibling:
-			p.KeyBegin = iSkipWhitespaceAndCharS(s, p.ValEnd, p.LineEnd, '|')
-			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
-				p.state = stateNewLine
-			} else {
-				p.parseKeyValue(s)
-				return true
-			}
-		}
+	return p.next(s, false)
+}
+
+// Next reads bytes and stores key and value.
+// Returns true if line has been read. Inline elements are ignored.
+func (p *ParserS) NextNoInline(s string) bool {
+	return p.next(s, true)
+}
+
+// LineToNoInline reads the whole current line ignoring inline elements.
+func (p *ParserS) LineToNoInline(s string) {
+	p.parseIndentation(s)
+	p.KeyBegin = iSkipWhitespaceS(s, p.KeyBegin, p.LineEnd)
+	p.KeyValueToNoInline(s)
+}
+
+// KeyToNoInline reads the current key ignoring inline elements.
+func (p *ParserS) KeyToNoInline(s string) {
+	stateOld := p.state
+	p.KeyEnd = iSkipNonWhitespaceS(s, p.KeyBegin, p.LineEnd)
+	p.ValBegin = iSkipWhitespaceS(s, p.KeyEnd, p.LineEnd)
+	p.ValEnd, p.state = iParseValueS(s, p.ValBegin, p.LineEnd, p.state)
+	p.nextKeyBegin = p.ValEnd + 1
+	p.ValEnd = iSkipWhitespaceReverseS(s, p.ValBegin, p.ValEnd)
+	if stateOld == p.state {
+		p.state = stateNewLine
 	}
-	return false
+	p.KeyLen = p.KeyEnd - p.KeyBegin
+	p.ValLen = p.ValEnd - p.ValBegin
+}
+
+// KeyValueToNoInline reads the current key and value ignoring inline elements.
+func (p *ParserS) KeyValueToNoInline(s string) {
+	p.KeyEnd = iSkipNonWhitespaceS(s, p.KeyBegin, p.LineEnd)
+	p.ValBegin = iSkipWhitespaceS(s, p.KeyEnd, p.LineEnd)
+	p.KeyLen = p.KeyEnd - p.KeyBegin
+	p.ValueToNoInline(s)
+}
+
+// ValueToNoInline reads the current value ignoring inline elements.
+func (p *ParserS) ValueToNoInline(s string) {
+	p.ValEnd = iSkipWhitespaceReverseS(s, p.ValBegin, p.LineEnd)
+	p.nextKeyBegin = p.LineEnd + 1
+	p.ValLen = p.ValEnd - p.ValBegin
+	p.state = stateNewLine
 }
 
 // Reset sets all members except LineNumber to zero.
@@ -107,7 +107,7 @@ func (p *ParserS) Line(s string) string {
 	return s[p.LineBegin:p.LineEnd]
 }
 
-// ListParserV returns initialized list parser for key.
+// ListParserK returns initialized list parser for key.
 func (p *ParserS) ListParserK() ListParserS {
 	var listParser ListParserS
 	listParser.ListBegin = p.KeyBegin
@@ -132,8 +132,8 @@ func (p *ParserS) ListParserV() ListParserS {
 }
 
 // Entry returns entry slice.
-func (p *ListParserS) Entry(bytes []byte) []byte {
-	return bytes[p.EntryBegin:p.EntryEnd]
+func (p *ListParserS) Entry(s string) string {
+	return s[p.EntryBegin:p.EntryEnd]
 }
 
 // Init initializes list parser state.
@@ -146,11 +146,11 @@ func (p *ListParserS) Init(listBegin, listEnd int) {
 	p.Index = -1
 }
 
-// Next reads bytes and stores entry offsets. Whitespace around entry is skipped.
+// Next reads bytes and stores entry offsets. Whitespace around entry is omitted.
 // Returns true if entry has been read.
-func (p *ListParserS) Next(bytes []byte, separator byte) bool {
+func (p *ListParserS) Next(s string, separator byte) bool {
 	for i := p.SeparatorBegin + 1; i < p.ListEnd; i++ {
-		iByte := bytes[i]
+		iByte := s[i]
 		if iByte == separator && separator != ' ' {
 			p.EntryBegin, p.EntryEnd, p.SeparatorBegin, p.EntryLen = i, i, i, 0
 			p.Index++
@@ -159,9 +159,9 @@ func (p *ListParserS) Next(bytes []byte, separator byte) bool {
 			p.EntryBegin = i
 			p.SeparatorBegin = p.ListEnd
 			for j := i + 1; j < p.ListEnd; j++ {
-				if bytes[j] == separator {
+				if s[j] == separator {
 					if separator == ' ' {
-						nextEntryBegin := iSkipWhitespaceB(bytes, j+1, p.ListEnd)
+						nextEntryBegin := iSkipWhitespaceS(s, j+1, p.ListEnd)
 						if nextEntryBegin < p.ListEnd {
 							p.SeparatorBegin = nextEntryBegin - 1
 						}
@@ -171,7 +171,7 @@ func (p *ListParserS) Next(bytes []byte, separator byte) bool {
 					break
 				}
 			}
-			p.EntryEnd = iSkipWhitespaceReverseB(bytes, i+1, p.SeparatorBegin)
+			p.EntryEnd = iSkipWhitespaceReverseS(s, i+1, p.SeparatorBegin)
 			p.EntryLen = p.EntryEnd - p.EntryBegin
 			p.Index++
 			return true
@@ -186,6 +186,63 @@ func (p *ListParserS) Next(bytes []byte, separator byte) bool {
 	return false
 }
 
+func (p *ParserS) next(s string, noInline bool) bool {
+	for true {
+		switch p.state {
+		case stateNewLine:
+			if p.parseLineBounds(s) {
+				p.LineLen = p.LineEnd - p.LineBegin
+				p.parseIndentation(s)
+				p.state = stateNewLinePrefix
+			} else {
+				return false
+			}
+		case stateNewLinePrefix:
+			if noInline {
+				p.KeyBegin = iSkipWhitespaceS(s, p.KeyBegin, p.LineEnd)
+				p.KeyValueToNoInline(s)
+				return true
+			} else {
+				p.KeyBegin = iSkipWhitespaceAndCharS(s, p.KeyBegin, p.LineEnd, '|')
+				if isCommentS(s[p.KeyBegin:p.LineEnd]) {
+					p.state = stateNewLine
+				} else {
+					if p.parseInlineChildPrefix(s) {
+						p.state = stateNewLinePrefix
+					} else {
+						p.parseKeyValue(s)
+						return true
+					}
+				}
+			}
+		case stateInlineChild:
+			p.KeyBegin = iSkipWhitespaceS(s, p.nextKeyBegin, p.LineEnd)
+			for p.parseInlineChildPrefix(s) {
+				p.KeyBegin = iSkipWhitespaceS(s, p.KeyBegin, p.LineEnd)
+			}
+			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
+				p.state = stateNewLine
+			} else {
+				p.Indent++
+				p.parseKeyValue(s)
+				return true
+			}
+		case stateInlineSibling:
+			p.KeyBegin = iSkipWhitespaceAndCharS(s, p.ValEnd, p.LineEnd, '|')
+			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
+				p.state = stateNewLine
+			} else {
+				p.parseKeyValue(s)
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// parseLineBounds returns true, when end of line has been reached.
+// When this happens offsets are updated, otherwise not.
+// (Exception is, when ParseLastLine is set.)
 func (p *ParserS) parseLineBounds(s string) bool {
 	for i := p.nextLineBegin; i < len(s); i++ {
 		if s[i] == '\r' {
@@ -218,6 +275,7 @@ func (p *ParserS) parseLineBounds(s string) bool {
 	return false
 }
 
+// parseIndentation skips tabs (other characters are not skipped).
 func (p *ParserS) parseIndentation(s string) {
 	p.KeyBegin, p.Indent = p.LineBegin, 0
 	for p.KeyBegin < p.LineEnd && s[p.KeyBegin] == '\t' {
@@ -241,7 +299,7 @@ func (p *ParserS) parseInlineChildPrefix(s string) bool {
 func (p *ParserS) parseKeyValue(s string) {
 	stateOld := p.state
 	p.KeyEnd, p.state = iParseKeyS(s, p.KeyBegin, p.LineEnd, p.state)
-	if stateOld == p.state {
+	if stateOld == p.state { // more to parse
 		p.ValBegin = iSkipWhitespaceS(s, p.KeyEnd, p.LineEnd)
 		p.ValEnd, p.state = iParseValueS(s, p.ValBegin, p.LineEnd, p.state)
 		p.nextKeyBegin = p.ValEnd + 1
@@ -249,12 +307,12 @@ func (p *ParserS) parseKeyValue(s string) {
 		if stateOld == p.state {
 			p.state = stateNewLine
 		}
-	} else {
+	} else { // end here, inline element next
 		p.ValBegin = p.KeyEnd
 		p.ValEnd = p.KeyEnd
 		p.nextKeyBegin = p.KeyEnd + 1
+		p.KeyEnd = iSkipWhitespaceReverseS(s, p.KeyBegin, p.KeyEnd)
 	}
-	p.KeyEnd = iSkipWhitespaceReverseS(s, p.KeyBegin, p.KeyEnd)
 	p.KeyLen = p.KeyEnd - p.KeyBegin
 	p.ValLen = p.ValEnd - p.ValBegin
 }
@@ -325,6 +383,15 @@ func isCommentS(str string) bool {
 		}
 	}
 	return false
+}
+
+func iSkipNonWhitespaceS(s string, from, to int) int {
+	for i := from; i < to; i++ {
+		if s[i] <= 32 {
+			return i
+		}
+	}
+	return to
 }
 
 func iSkipWhitespaceS(s string, from, to int) int {
