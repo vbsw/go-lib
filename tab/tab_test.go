@@ -613,6 +613,58 @@ func TestListParser2(t *testing.T) {
 	}
 }
 
+func TestListParser3(t *testing.T) {
+	var parser ListParserB
+	line := []byte(",,,  ")
+	parser.Init(0, len(line))
+	success := parser.Next(line, ',')
+	if success != true {
+		t.Error("wrong success:", success)
+	} else if string(parser.Entry(line)) != "" {
+		t.Error("wrong entry:", string(parser.Entry(line)))
+	} else if parser.Index != 0 {
+		t.Error("wrong index:", parser.Index)
+	} else {
+		success = parser.Next(line, ',')
+		if success != true {
+			t.Error("wrong success:", success)
+		} else if string(parser.Entry(line)) != "" {
+			t.Error("wrong entry:", string(parser.Entry(line)))
+		} else if parser.Index != 1 {
+			t.Error("wrong index:", parser.Index)
+		} else {
+			success = parser.Next(line, ',')
+			if success != true {
+				t.Error("wrong success:", success)
+			} else if string(parser.Entry(line)) != "" {
+				t.Error("wrong entry:", string(parser.Entry(line)))
+			} else if parser.Index != 2 {
+				t.Error("wrong index:", parser.Index)
+			} else {
+				success = parser.Next(line, ',')
+				if success != true {
+					t.Error("wrong success:", success)
+				} else if string(parser.Entry(line)) != "" {
+					t.Error("wrong entry:", string(parser.Entry(line)))
+				} else if parser.Index != 3 {
+					t.Error("wrong index:", parser.Index)
+				} else if parser.SeparatorBegin < parser.ListEnd {
+					t.Error("wrong offsets:", parser.SeparatorBegin, parser.ListEnd)
+				} else {
+					success = parser.Next(line, ',')
+					if success != false {
+						t.Error("wrong success:", success)
+					} else if string(parser.Entry(line)) != "" {
+						t.Error("wrong entry:", string(parser.Entry(line)))
+					} else if parser.Index != 3 {
+						t.Error("wrong index:", parser.Index)
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestNoInline1(t *testing.T) {
 	var parser ParserB
 	line := []byte("aaa bbb\\ccc ddd|eee fff\r\nggg\r")
