@@ -228,7 +228,7 @@ func (p *ParserS) next(s string, noInline bool) bool {
 				return true
 			}
 		case stateInlineSibling:
-			p.KeyBegin = iSkipWhitespaceAndCharS(s, p.ValEnd, p.LineEnd, '|')
+			p.KeyBegin = iSkipWhitespaceAndCharS(s, p.nextKeyBegin, p.LineEnd, '|')
 			if isCommentS(s[p.KeyBegin:p.LineEnd]) {
 				p.state = stateNewLine
 			} else {
