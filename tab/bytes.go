@@ -267,10 +267,15 @@ func (p *ParserB) parseLineBounds(bytes []byte) bool {
 			return true
 		}
 	}
-	if p.nextLineBegin < len(bytes) && p.ParseLastLine {
-		p.LineNumber++
+	if p.ParseLastLine {
+		lastLineValid := p.nextLineBegin < len(bytes)
+		p.KeyBegin, p.KeyEnd, p.ValBegin, p.ValEnd = len(bytes), len(bytes), len(bytes), len(bytes)
+		p.KeyLen, p.ValLen = 0, 0
 		p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(bytes), len(bytes)
-		return true
+		if lastLineValid {
+			p.LineNumber++
+			return true
+		}
 	}
 	return false
 }

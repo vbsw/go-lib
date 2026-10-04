@@ -233,15 +233,15 @@ func TestComment3(t *testing.T) {
 	success := parser.Next(line)
 	if success != false {
 		t.Error("wrong success:", success)
-	} else if parser.LineBegin != 25 {
+	} else if parser.LineBegin != 30 {
 		t.Error("wrong line begin:", parser.LineBegin)
-	} else if parser.LineEnd != 29 {
+	} else if parser.LineEnd != 30 {
 		t.Error("wrong line end:", parser.LineEnd)
 	} else if parser.nextLineBegin != 30 {
 		t.Error("wrong next line begin:", parser.nextLineBegin)
-	} else if parser.KeyBegin != 25 || parser.KeyEnd != 27 {
+	} else if parser.KeyBegin != 30 || parser.KeyEnd != 30 {
 		t.Error("key wrong:", parser.KeyBegin, parser.KeyEnd)
-	} else if parser.ValBegin != 27 || parser.ValEnd != 27 {
+	} else if parser.ValBegin != 30 || parser.ValEnd != 30 {
 		t.Error("value wrong:", parser.ValBegin, parser.ValEnd)
 	}
 }
