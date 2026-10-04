@@ -268,13 +268,14 @@ func (p *ParserS) parseLineBounds(s string) bool {
 		}
 	}
 	if p.ParseLastLine {
-		lastLineValid := p.nextLineBegin < len(s)
-		p.KeyBegin, p.KeyEnd, p.ValBegin, p.ValEnd = len(s), len(s), len(s), len(s)
-		p.KeyLen, p.ValLen = 0, 0
-		p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(s), len(s)
-		if lastLineValid {
+		if p.nextLineBegin < len(s) {
 			p.LineNumber++
+			p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(s), len(s)
 			return true
+		} else {
+			p.KeyBegin, p.KeyEnd, p.ValBegin, p.ValEnd = len(s), len(s), len(s), len(s)
+			p.KeyLen, p.ValLen = 0, 0
+			p.LineBegin, p.LineEnd, p.nextLineBegin = p.nextLineBegin, len(s), len(s)
 		}
 	}
 	return false
